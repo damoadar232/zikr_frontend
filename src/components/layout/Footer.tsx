@@ -1,0 +1,9 @@
+import { useState } from "react";
+import { LocalizedText, useInterfaceText } from "../../app/providers/interfaceLanguage";
+import { Btn, Icon, Logo } from "../ui";
+
+export function Footer({ go }: { go: (route: string) => void }) {
+    const [subscribed, setSubscribed] = useState(false);
+    const t = useInterfaceText();
+    return <footer><div className="container footer-grid"><div><Logo /><p><LocalizedText text={"A peaceful digital home for Islamic devotional content, reflection, and creative expression."} /></p><small className="verified-note"><LocalizedText text={"Social links will appear once official profiles are verified."} /></small></div><div><h3>{t("Explore")}</h3>{[["Lyrics", "lyrics"], ["Quran", "quran"], ["Audio", "audio"], ["E-Books", "ebooks"]].map(([x, r]) => <button onClick={() => go(r)} key={x}>{t(x)}</button>)}</div><div><h3>{t("Discover")}</h3>{[["Services", "services"], ["About Us", "about"], ["Contact Us", "contact"], ["Admin", "admin"]].map(([x, r]) => <button onClick={() => go(r)} key={x}>{t(x)}</button>)}</div><div><h3>{t("Stay Connected")}</h3><p>{subscribed ? t("Thank you. Subscription delivery requires backend connection.") : t("New devotional works and thoughtful collections, shared with care.")}</p><form className="footer-email" onSubmit={e => { e.preventDefault(); setSubscribed(true) }}><input required type="email" aria-label={t("Email address")} placeholder={t("Email address")} /><button aria-label={t("Subscribe")} type="submit"><Icon name={subscribed ? "check" : "arrow"} /></button></form></div></div><div className="container footer-bottom"><span><LocalizedText text={"© 2025 ZIKR-E-ILAHI."} trailing=" " />{t("All rights reserved")}</span><span>{t("Privacy and terms pages will be published before launch.")}</span></div></footer>;
+}
