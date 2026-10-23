@@ -26,7 +26,7 @@ export function BookDetail({ go, isLoggedIn, onDownloadBook }: { go: (route: str
         return <main className="reading-bg"><div className="container"><Breadcrumbs items={["E-Books", "Not found"]} go={go} /><div className="empty"><Icon name="book" size={32} /><h3><LocalizedText text={"Book not found"} /></h3><p><LocalizedText text={"The selected publication is not available in the current library."} /></p><button className="btn btn-primary" onClick={() => go("ebooks")}><LocalizedText text={"Back to library"} /></button></div></div></main>;
     }
 
-    const relatedBooks = (book.relatedBooks || []).map((id) => getEbookById(id)).filter(Boolean);
+    const relatedBooks = (book.relatedBooks || []).map((id) => getEbookById(id)).filter((item): item is NonNullable<typeof item> => !!item);
     const canDownload = book.downloadable && isAvailableDownloadUrl(book.downloadUrl);
     const accessLabel = t(canDownload ? (isLoggedIn ? book.access : "Login required to download") : "Download unavailable");
 

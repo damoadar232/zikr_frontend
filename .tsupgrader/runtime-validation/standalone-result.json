@@ -1,0 +1,129 @@
+{
+  "planHash": "ffd81d5618a548f06e5788c98b2e311ee6cf039d26fe0e68e82222056281f2a6",
+  "phase": "standalone",
+  "recordedAtUtc": "2026-10-23T10:59:39.8443123Z",
+  "retryCount": 0,
+  "resetBaseline": false,
+  "complete": true,
+  "result": {
+    "setupSucceeded": true,
+    "setupDurationMs": 0,
+    "setupFailureOutput": null,
+    "assertions": [
+      {
+        "name": "tests-pass",
+        "kind": "process",
+        "verificationMethod": "test-results",
+        "passed": true,
+        "timedOut": false,
+        "skipped": false,
+        "skippedReason": null,
+        "exitCode": 0,
+        "outputSample": "TAP version 13\r\n# Subtest: admin list unwraps the PageSlice envelope and sends only supported filters\r\nok 1 - admin list unwraps the PageSlice envelope and sends only supported filters\r\n  ---\r\n  duration_ms: 6.9729\r\n  type: \u0027test\u0027\r\n  ...\r\n# Subtest: create submits the numeric combined request and unwraps the created lyric\r\nok 2 - create submits the numeric combined request and unwraps the created lyric\r\n  ---\r\n  duration_ms: 5.0758\r\n  type: \u0027test\u0027\r\n  ...\r\n# Subtest: update uses the numeric lyric ID and unwraps the updated lyric\r\nok 3 - update uses the numeric lyric ID and unwraps the updated lyric\r\n  ---\r\n  duration_ms: 1.2984\r\n  type: \u0027test\u0027\r\n  ...\r\n# Subtest: delete uses the numeric lyric ID and accepts a no-content response\r\nok 4 - delete uses the numeric lyric ID and accepts a no-content response\r\n  ---\r\n  duration_ms: 0.4918\r\n  type: \u0027test\u0027\r\n  ...\r\n# Subtest: delete surfaces conflict and other API error messages\r\nok 5 - delete surfaces conflict and other API error messages\r\n  ---\r\n  duration_ms: 1.381\r\n  type: \u0027test\u0027\r\n  ...\r\n# Subtest: language save removes unsupported code marks while preserving lyric text and supported formatting\r\nok 6 - language save removes unsupported code marks while preserving lyric text and supported formatting\r\n  ---\r\n  duration_ms: 11.8028\r\n  type: \u0027test\u0027\r\n  ...\r\n# Subtest: Hindi and Urdu language documents keep supported text marks when saved\r\nok 7 - Hindi and Urdu language documents keep supported text marks when saved\r\n  ---\r\n  duration_ms: 3.3131\r\n  type: \u0027test\u0027\r\n  ...\r\n# Subtest: conflicts remain distinguishable and do not rewrite submitted documents\r\nok 8 - conflicts remain distinguishable and do not rewrite submitted documents\r\n  ---\r\n  duration_ms: 1.0225\r\n  type: \u0027test\u0027\r\n  ...\r\n# Subtest: an unconfigured API URL fails rather than falling back to browser demo storage\r\nok 9 - an unconfigured API URL fails rather than falling back to browser demo storage\r\n  ---\r\n  duration_ms: 12.1942\r\n  type: \u0027test\u0027\r\n  ...\r\n1..9\r\n# tests 9\r\n# suites 0\r\n# pass 9\r\n# fail 0\r\n# cancelled 0\r\n# skipped 0\r\n# todo 0\r\n# duration_ms 554.6464\r\n",
+        "durationMs": 1851,
+        "testResults": {
+          "testFramework": "unknown",
+          "runnerDetectedFrom": "none",
+          "testsTotal": 0,
+          "testsPassed": 0,
+          "testsFailed": 0,
+          "testsSkipped": 0,
+          "parseFailed": true
+        }
+      },
+      {
+        "name": "typescript-no-emit",
+        "kind": "process",
+        "verificationMethod": "exit-code",
+        "passed": true,
+        "timedOut": false,
+        "skipped": false,
+        "skippedReason": null,
+        "exitCode": 0,
+        "outputSample": "",
+        "durationMs": 22743
+      },
+      {
+        "name": "production-build",
+        "kind": "process",
+        "verificationMethod": "exit-code",
+        "passed": true,
+        "timedOut": false,
+        "skipped": false,
+        "skippedReason": null,
+        "exitCode": 0,
+        "outputSample": "\r\n\u003E figma-make-app@1.0.0 build\r\n\u003E vite build\r\n\r\n\u001B[36mvite v8.0.5 \u001B[32mbuilding client environment for production...\u001B[36m\u001B[39m\r\n\u001B[2K\r\ntransforming...\u2713 143 modules transformed.\r\nrendering chunks...\r\ncomputing gzip size...\r\ndist/index.html                             0.74 kB \u2502 gzip:   0.38 kB\r\ndist/assets/logo-Dx4AFqRr.png             699.04 kB\r\ndist/assets/index-BNn9arAS.css            120.39 kB \u2502 gzip:  22.99 kB\r\ndist/assets/jsx-runtime-BrKaiqKr.js        11.88 kB \u2502 gzip:   4.23 kB\r\ndist/assets/AdminContentPage-Dcke3YvU.js   79.46 kB \u2502 gzip:  19.62 kB\r\ndist/assets/LyricRichText-MIFdE-M7.js     407.96 kB \u2502 gzip: 128.54 kB\r\ndist/assets/index-ZWFdthMC.js             460.64 kB \u2502 gzip: 134.32 kB\r\n\r\n\u001B[32m\u2713 built in 2.89s\u001B[39m\r\n",
+        "durationMs": 5730
+      },
+      {
+        "name": "dev-server-home-200",
+        "kind": "http-probe",
+        "verificationMethod": "http-status",
+        "passed": true,
+        "timedOut": false,
+        "skipped": false,
+        "skippedReason": null,
+        "exitCode": null,
+        "outputSample": "HTTP 200\n\u003C!doctype html\u003E\n\u003Chtml lang=\u0022en\u0022\u003E\n  \u003Chead\u003E\n    \u003Cscript type=\u0022module\u0022\u003Eimport { injectIntoGlobalHook } from \u0022/@react-refresh\u0022;\ninjectIntoGlobalHook(window);\nwindow.$RefreshReg$ = () =\u003E {};\nwindow.$RefreshSig$ = () =\u003E (type) =\u003E type;\u003C/script\u003E\n\n    \u003Cscript type=\u0022module\u0022 src=\u0022/@vite/client\u0022\u003E\u003C/script\u003E\n\n    \n    \u003Cmeta charset=\u0022UTF-8\u0022 /\u003E\n    \u003Cmeta name=\u0022viewport\u0022 content=\u0022width=device-width, initial-scale=1.0\u0022 /\u003E\n    \u003Clink rel=\u0022preconnect\u0022 href=\u0022https://fonts.googleapis.com\u0022 /\u003E\n    \u003Clink rel=\u0022preconnect\u0022 href=\u0022https://fonts.gstatic.com\u0022 crossorigin /\u003E\n    \u003Ctitle\u003EFigma Make App\u003C/title\u003E\n    \n    \u003Clink rel=\u0022icon\u0022 href=\u0022/favicon.svg\u0022\u003E\n    \u003Cmeta property=\u0022og:title\u0022 content=\u0022Figma Make App\u0022\u003E\n  \u003C/head\u003E\n  \u003Cbody\u003E\n    \n    \u003Cdiv id=\u0022root\u0022\u003E\u003C/div\u003E\n    \u003Cscript type=\u0022module\u0022 src=\u0022/src/main.tsx\u0022\u003E\u003C/script\u003E\n    \n  \u003C/body\u003E\n\u003C/html\u003E\n\n--- server output ---\n\r\n\u003E figma-make-app@1.0.0 dev\r\n\u003E vite --host 127.0.0.1 --port 5174\r\n\r\n\u001B[2m4:29:38 pm\u001B[22m \u001B[36m\u001B[1m[vite]\u001B[22m\u001B[39m \u001B[90m\u001B[2m(client)\u001B[22m\u001B[39m Re-optimizing dependencies because vite config has changed\r\n\r\n  \u001B[32m\u001B[1mVITE\u001B[22m v8.0.5\u001B[39m  \u001B[2mready in \u001B[0m\u001B[1m1501\u001B[22m\u001B[2m\u001B[0m ms\u001B[22m\r\n\r\n  \u001B[32m\u279C\u001B[39m  \u001B[1mLocal\u001B[22m:   \u001B[36mhttp://127.0.0.1:\u001B[1m5174\u001B[22m/\u001B[39m\r\n\u001B[2m4:29:39 pm\u001B[22m \u001B[36m\u001B[1m[vite]\u001B[22m\u001B[39m \u001B[90m\u001B[2m(client)\u001B[22m\u001B[39m [optimizer] scanning dependencies...\r\n",
+        "durationMs": 4092
+      }
+    ],
+    "executions": [
+      {
+        "source": "tests-pass",
+        "resolvedExecutable": "C:\\Program Files\\nodejs\\node.EXE",
+        "args": [
+          "--test",
+          "src\\features\\lyrics\\services\\lyricsApiService.test.js"
+        ],
+        "cwd": "D:\\ZIKR-E-ILAHI",
+        "env": {},
+        "prependPath": [],
+        "platform": "win32"
+      },
+      {
+        "source": "typescript-no-emit",
+        "resolvedExecutable": "C:\\Program Files\\nodejs\\npm.CMD",
+        "args": [
+          "exec",
+          "tsc",
+          "--",
+          "--noEmit"
+        ],
+        "cwd": "D:\\ZIKR-E-ILAHI",
+        "env": {},
+        "prependPath": [],
+        "platform": "win32"
+      },
+      {
+        "source": "production-build",
+        "resolvedExecutable": "C:\\Program Files\\nodejs\\npm.CMD",
+        "args": [
+          "run",
+          "build"
+        ],
+        "cwd": "D:\\ZIKR-E-ILAHI",
+        "env": {},
+        "prependPath": [],
+        "platform": "win32"
+      },
+      {
+        "source": "dev-server-home-200",
+        "resolvedExecutable": "C:\\Program Files\\nodejs\\npm.CMD",
+        "args": [
+          "run",
+          "dev",
+          "--",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "5174"
+        ],
+        "cwd": "D:\\ZIKR-E-ILAHI",
+        "env": {},
+        "prependPath": [],
+        "platform": "win32"
+      }
+    ]
+  }
+}

@@ -24,3 +24,16 @@ test("demo content repository supports create, read, update, publish, delete, an
     assert.deepEqual(repository.list("lyrics", initial), initial);
     assert.deepEqual(createContentRepository({ storage, eventTarget: null }).list("lyrics", []), initial);
 });
+
+test("deactivating a reciter profile does not remove existing lyric associations", () => {
+    const repository = createContentRepository({ storage: createMemoryStorage(), eventTarget: null });
+    const reciters = [{ id: "reciter-one", name: "Reciter One", status: "active" }];
+    const lyrics = [{ id: "shared-lyric", title: "Shared lyric", reciterIds: ["reciter-one"], status: "published" }];
+    repository.replace("reciters", reciters);
+    repository.replace("lyrics", lyrics);
+
+    repository.update("reciters", "reciter-one", { status: "inactive" }, reciters);
+
+    assert.equal(repository.list("reciters", [])[0].status, "inactive");
+    assert.deepEqual(repository.list("lyrics", [])[0].reciterIds, ["reciter-one"]);
+});

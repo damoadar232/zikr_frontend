@@ -8,6 +8,7 @@ import {
     getLyricsByPoet,
     getLyricsByBook,
     getLyricsByLanguage,
+    normalizeLyricLanguageCode,
     getLyricsBySubject,
     lyrics,
 } from "./lyricsData.js";
@@ -25,6 +26,18 @@ test("published lyrics retain newest-first order and title-only search works", (
     const initial = filterLyricsByTitle(published, "", "M");
     assert.ok(initial.some((item) => item.title.startsWith("M")));
     assert.ok(!initial.some((item) => item.title.startsWith("A")));
+});
+
+test("combined titles can be searched by either Hindi script or Roman transliteration", () => {
+    const combined = {
+        id: "combined-title",
+        title: "तुम ज़ात-ए-ख़ुदा से न जुदा हो / Tum Zaat-e-Khuda Se Na Juda Ho",
+        status: "published",
+    };
+
+    assert.deepEqual(filterLyricsByTitle([combined], "ज़ात-ए-ख़ुदा", "All").map((item) => item.id), ["combined-title"]);
+    assert.deepEqual(filterLyricsByTitle([combined], "tum zaat-e-khuda", "All").map((item) => item.id), ["combined-title"]);
+    assert.deepEqual(filterLyricsByTitle([combined], "tum zaat-e-khuda", "T").map((item) => item.id), ["combined-title"]);
 });
 
 test("lyrics categories, language, and subject filters reflect the actual dataset", () => {
@@ -61,6 +74,19 @@ test("lyrics categories, language, and subject filters reflect the actual datase
     );
 });
 
+test("language filters accept normalized code and script labels without changing stored records", () => {
+    const hindiRecord = {
+        id: "hindi-script-alias",
+        title: "Hindi title",
+        status: "published",
+        languageVersions: [{ code: "Hindi", label: "Hindi", script: "Devanagari", text: "देवनागरी" }],
+    };
+    assert.equal(normalizeLyricLanguageCode("hi-IN"), "hi");
+    assert.equal(normalizeLyricLanguageCode("Devanagari"), "hi");
+    assert.deepEqual(getLyricsByLanguage([hindiRecord], "hi").map((item) => item.id), ["hindi-script-alias"]);
+    assert.equal(hindiRecord.languageVersions[0].code, "Hindi");
+});
+
 test("artist filters include additional reciters without changing legacy artistId records", () => {
     const multiReciter = {
         id: "shared-recitation",
@@ -73,4 +99,20 @@ test("artist filters include additional reciters without changing legacy artistI
 
     assert.deepEqual(getLyricsByArtist([...lyrics, multiReciter], "traditional").map((item) => item.id).includes("shared-recitation"), true);
     assert.deepEqual(getLyricsByArtist([...lyrics, multiReciter], "zohaib-ashrafi").map((item) => item.id).includes("shared-recitation"), true);
+});
+
+test("reciter filters include all assigned reciters without duplicating lyrics", () => {
+    const assigned = {
+        id: "shared-recitation",
+        title: "Shared recitation",
+        artistId: "traditional",
+        reciterIds: ["owais-raza-qadri", "zohaib-ashrafi"],
+        status: "published",
+        createdAt: "2025-01-01T00:00:00Z",
+    };
+    const list = [...lyrics, assigned];
+
+    assert.deepEqual(getLyricsByArtist(list, "owais-raza-qadri").filter((item) => item.id === "shared-recitation").length, 1);
+    assert.deepEqual(getLyricsByArtist(list, "zohaib-ashrafi").filter((item) => item.id === "shared-recitation").length, 1);
+    assert.deepEqual(getLyricsByArtist(list, "traditional").some((item) => item.id === "shared-recitation"), false);
 });

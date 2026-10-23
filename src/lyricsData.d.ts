@@ -1,0 +1,50 @@
+import type { JSONContent } from "@tiptap/core";
+
+export type LyricRecord = {
+    id: string;
+    slug?: string;
+    title: string;
+    artistId?: string;
+    artistIds?: string[];
+    reciterIds?: string[];
+    reciters?: string[];
+    writerId?: string;
+    writer?: string;
+    categoryIds?: string[];
+    subjectIds: string[];
+    tags?: string[];
+    bookId?: string | null;
+    createdAt?: string;
+    status: string;
+    featured?: boolean;
+    image?: string;
+    languageVersions: Array<{
+        code: string;
+        label: string;
+        script?: string;
+        dir?: string;
+        text: string;
+        document?: JSONContent;
+    }>;
+    relatedAudio?: Array<{ title: string; url: string }>;
+    relatedVideos?: Array<{ title?: string; url: string }>;
+    [key: string]: any;
+};
+
+export const lyricCategories: Array<{ id: string; name: string }>;
+export const artists: Array<{ id: string; name: string; profile: string }>;
+export const poets: Array<{ id: string; name: string; profile: string }>;
+export const lyricBooks: Array<{ id: string; title: string; author: string; description: string; coverColor: string }>;
+export const lyricSubjects: Array<{ id: string; name: string }>;
+export const lyrics: LyricRecord[];
+export function getPublishedLyrics(list?: LyricRecord[]): LyricRecord[];
+export function getLyricsByCategory(list: LyricRecord[] | undefined, categoryId: string): LyricRecord[];
+export function getLyricsByArtist(list: LyricRecord[] | undefined, artistId: string): LyricRecord[];
+export function getLyricsByPoet(list: LyricRecord[] | undefined, poetId: string): LyricRecord[];
+export function getLyricsByBook(list: LyricRecord[] | undefined, bookId: string): LyricRecord[];
+export function getLyricsByLanguage(list: LyricRecord[] | undefined, languageCode: string): LyricRecord[];
+export function normalizeLyricLanguageCode(value: string | undefined): string;
+export function getLyricsBySubject(list: LyricRecord[] | undefined, subjectId: string): LyricRecord[];
+export function filterLyricsByTitle(list: LyricRecord[], search?: string, letter?: string): LyricRecord[];
+export function getRelatedRecordName(collection: Array<{ id: string; name?: string; title?: string }>, id: string): string;
+export function findLyricById(id: string): LyricRecord | null;

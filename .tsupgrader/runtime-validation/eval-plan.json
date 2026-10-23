@@ -1,0 +1,45 @@
+{
+  "generatedAt": "2026-10-23T16:30:00Z",
+  "generatedOnPlatform": "win32",
+  "projectType": "webapp",
+  "setup": [],
+  "assertions": [
+    {
+      "name": "tests-pass",
+      "kind": "process",
+      "command": "node",
+      "args": ["--test", "src\\features\\lyrics\\services\\lyricsApiService.test.js"],
+      "verificationMethod": "test-results",
+      "expected": "0",
+      "timeoutSeconds": 120
+    },
+    {
+      "name": "typescript-no-emit",
+      "kind": "process",
+      "command": "npm",
+      "args": ["exec", "tsc", "--", "--noEmit"],
+      "verificationMethod": "exit-code",
+      "expected": "0",
+      "timeoutSeconds": 180
+    },
+    {
+      "name": "production-build",
+      "kind": "process",
+      "command": "npm",
+      "args": ["run", "build"],
+      "verificationMethod": "exit-code",
+      "expected": "0",
+      "timeoutSeconds": 180
+    },
+    {
+      "name": "dev-server-home-200",
+      "kind": "http-probe",
+      "startCommand": "npm",
+      "startArgs": ["run", "dev", "--", "--host", "127.0.0.1", "--port", "5174"],
+      "url": "http://127.0.0.1:5174/",
+      "verificationMethod": "http-status",
+      "expected": "200",
+      "timeoutSeconds": 120
+    }
+  ]
+}

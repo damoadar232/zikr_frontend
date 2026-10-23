@@ -1,5 +1,6 @@
 import { API_BASE_URL, requireApiBaseUrl } from "../../../app/config/apiBase.js";
 import { AdminApiError, adminAuth } from "../../auth/services/adminAuth.js";
+import { sanitizeLyricDocument } from "../utils/lyricDocumentSafety.ts";
 
 function queryString(values) {
     const params = new URLSearchParams();
@@ -38,7 +39,8 @@ export function createLyricsApi({ baseUrl = API_BASE_URL, auth = adminAuth, fetc
         return envelope.data;
     };
 
-    const listAdminLyrics = (options = {}) => request(`/api/v1/admin/lyrics${queryString(options)}`);
+    const listAdminLyrics = ({ page, size, status, query } = {}) => request(
+        `/api/v1/admin/lyrics${queryString({ page, size, status, query })}`);
     const loadLyricForEditing = (reference) => request(`/api/v1/admin/lyrics/${encodeURIComponent(reference)}`);
     const createLyric = (metadata) => request("/api/v1/admin/lyrics", { method: "POST", body: metadata });
     const updateLyricMetadata = (reference, metadata) => request(
@@ -49,22 +51,9 @@ export function createLyricsApi({ baseUrl = API_BASE_URL, auth = adminAuth, fetc
     };
     const saveLanguageVersion = (reference, languageCode, document, expectedRowVersion, changeNote) => request(
         `/api/v1/admin/lyrics/${encodeURIComponent(reference)}/languages/${encodeURIComponent(languageCode)}`,
-        { method: "PUT", body: { document, expectedRowVersion, changeNote } });
-    const setLanguageStatus = (reference, languageCode, status) => request(
-        `/api/v1/admin/lyrics/${encodeURIComponent(reference)}/languages/${encodeURIComponent(languageCode)}/status`,
-        { method: "PATCH", body: { status } });
+        { method: "PUT", body: { document: sanitizeLyricDocument(document), expectedRowVersion, changeNote } });
     const setLyricStatus = (reference, status) => request(
         `/api/v1/admin/lyrics/${encodeURIComponent(reference)}/status`, { method: "PATCH", body: { status } });
-    const loadPublicationStatus = async (reference) => {
-        const lyric = await loadLyricForEditing(reference);
-        return {
-            status: lyric.status, languageVersions: lyric.languageVersions.map((version) => ({
-                languageCode: version.languageCode,
-                status: version.status,
-                rowVersion: version.rowVersion,
-            }))
-        };
-    };
     const deleteLyric = (reference) => request(`/api/v1/admin/lyrics/${encodeURIComponent(reference)}`, { method: "DELETE" });
     const listPublicLyrics = (options = {}) => request(`/api/v1/lyrics${queryString(options)}`, { authenticated: false });
 
@@ -76,9 +65,7 @@ export function createLyricsApi({ baseUrl = API_BASE_URL, auth = adminAuth, fetc
         updateLyricMetadata,
         loadLanguageVersion,
         saveLanguageVersion,
-        setLanguageStatus,
         setLyricStatus,
-        loadPublicationStatus,
         deleteLyric,
     };
 }

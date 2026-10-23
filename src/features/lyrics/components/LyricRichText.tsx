@@ -7,6 +7,7 @@ import { TextStyle } from "@tiptap/extension-text-style";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { useEffect } from "react";
+import { sanitizeLyricDocument, sanitizePastedLyricHTML } from "../utils/lyricDocumentSafety";
 
 const LyricTypography = Extension.create({
     name: "lyricTypography",
@@ -37,7 +38,7 @@ const LyricTypography = Extension.create({
 });
 
 export const lyricRichTextExtensions = [
-    StarterKit,
+    StarterKit.configure({ code: false, codeBlock: false }),
     TextStyle,
     Color,
     FontFamily,
@@ -49,15 +50,15 @@ export const lyricRichTextExtensions = [
 export function LyricDocumentView({ document, language, dir, className = "" }: { document: JSONContent; language: string; dir: string; className?: string }) {
     const editor = useEditor({
         extensions: lyricRichTextExtensions,
-        content: document,
+        content: sanitizeLyricDocument(document),
         editable: false,
         immediatelyRender: false,
-        editorProps: { attributes: { lang: language, dir } },
+        editorProps: { attributes: { lang: language, dir }, transformPastedHTML: sanitizePastedLyricHTML },
     });
 
     useEffect(() => {
         if (!editor || JSON.stringify(editor.getJSON()) === JSON.stringify(document)) return;
-        editor.commands.setContent(document, { emitUpdate: false });
+        editor.commands.setContent(sanitizeLyricDocument(document), { emitUpdate: false });
     }, [document, editor]);
 
     return <div className={`lyric-rich-view ${className}`} lang={language} dir={dir}><EditorContent editor={editor} /></div>;

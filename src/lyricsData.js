@@ -65,6 +65,8 @@ export const lyrics = [
         title: "Mustafa Jaan-e-Rehmat",
         slug: "mustafa-jaan-e-rehmat",
         artistId: "owais-raza-qadri",
+        artistIds: ["owais-raza-qadri", "zohaib-ashrafi"],
+        reciterIds: ["owais-raza-qadri", "zohaib-ashrafi"],
         writerId: "imam-ahmed-raza-khan",
         categoryIds: ["durood-o-salam"],
         subjectIds: ["prophet", "madina"],
@@ -204,7 +206,9 @@ export function getLyricsByCategory(list = lyrics, categoryId) {
 export function getLyricsByArtist(list = lyrics, artistId) {
     const published = getPublishedLyrics(list);
     if (!artistId) return [];
-    return published.filter((item) => item.artistId === artistId || (item.artistIds || []).includes(artistId));
+    return published.filter((item) => Array.isArray(item.reciterIds) && item.reciterIds.length
+        ? item.reciterIds.includes(artistId)
+        : item.artistId === artistId || (item.artistIds || []).includes(artistId));
 }
 
 export function getLyricsByPoet(list = lyrics, poetId) {
@@ -222,7 +226,23 @@ export function getLyricsByBook(list = lyrics, bookId) {
 export function getLyricsByLanguage(list = lyrics, languageCode) {
     const published = getPublishedLyrics(list);
     if (!languageCode) return [];
-    return published.filter((item) => item.languageVersions?.some((version) => version.code === languageCode));
+    const targetCode = normalizeLyricLanguageCode(languageCode);
+    return published.filter((item) => item.languageVersions?.some((version) => normalizeLyricLanguageCode(version.code || version.label || version.script) === targetCode));
+}
+
+export function normalizeLyricLanguageCode(value) {
+    const normalized = String(value || "").trim().toLowerCase().replace(/_/g, "-");
+    const primary = normalized.split("-")[0];
+    const aliases = {
+        hindi: "hi",
+        devanagari: "hi",
+        english: "en",
+        roman: "en",
+        urdu: "ur",
+        arabic: "ar",
+        tamil: "ta",
+    };
+    return aliases[normalized] || aliases[primary] || primary;
 }
 
 export function getLyricsBySubject(list = lyrics, subjectId) {

@@ -332,6 +332,9 @@ Object.assign(messages.ur, {
   "Enter your publish date": "تاریخِ اشاعت درج کریں", "Enter your title": "عنوان درج کریں", "Enter your slug": "سلگ درج کریں", "Enter your writer / poet": "مصنف / شاعر کا نام درج کریں", "Enter your artist / naatkhawan": "فنکار / نعت خواں کا نام درج کریں", "Enter your category": "قسم درج کریں", "Enter your language": "زبان درج کریں",
 });
 
+Object.assign(messages.hi, { Back: "वापस", "All languages": "सभी भाषाएँ" });
+Object.assign(messages.ur, { Back: "واپس", "All languages": "تمام زبانیں" });
+
 export function translateInterface(language: string, key: string): string {
   const translated = messages[language as InterfaceLanguage]?.[key];
   if (translated) return translated;

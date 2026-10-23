@@ -9,7 +9,6 @@ export interface ApiLanguageVersion {
     languageCode: ApiLyricLanguage;
     document: JSONContent;
     plainText: string | null;
-    status: ApiContentStatus;
     createdAt: string;
     updatedAt: string;
     rowVersion: number;
@@ -26,10 +25,10 @@ export interface ApiAdminLyric {
     legacyId: string;
     title: string;
     slug: string;
-    artistId: string | null;
-    artistIds: string[];
+    artistId: number | null;
+    artistIds: number[];
     reciters: string[];
-    writerId: string | null;
+    writerId: number | null;
     writer: string | null;
     categoryIds: string[];
     subjectIds: string[];
@@ -57,10 +56,10 @@ export interface ApiPublicLyric {
     id: string;
     title: string;
     slug: string;
-    artistId: string | null;
-    artistIds: string[];
+    artistId: number | null;
+    artistIds: number[];
     reciters: string[];
-    writerId: string | null;
+    writerId: number | null;
     writer: string | null;
     categoryIds: string[];
     subjectIds: string[];
@@ -86,10 +85,10 @@ export interface LyricsMetadataRequest {
     legacyId?: string;
     title: string;
     slug?: string;
-    artistId?: string | null;
-    artistIds?: string[];
+    artistId?: number | string | null;
+    artistIds?: Array<number | string>;
     reciters?: string[];
-    writerId?: string | null;
+    writerId?: number | string | null;
     writerName?: string | null;
     categoryIds?: string[];
     subjectIds?: string[];
@@ -100,17 +99,31 @@ export interface LyricsMetadataRequest {
     mediaReferences?: ApiMediaReference[];
 }
 
+export interface CombinedLyricsCreateRequest {
+    title: string;
+    slug?: string;
+    writerId?: number | null;
+    reciterIds?: number[];
+    artistId?: number | null;
+    categoryIds?: number[];
+    subjectIds?: number[];
+    tags?: string[];
+    bookId?: string | null;
+    featured?: boolean;
+    mediaReferences?: ApiMediaReference[];
+}
+
+export type CombinedLyricsUpdateRequest = CombinedLyricsCreateRequest;
+
 export interface LyricsApiService {
     listAdminLyrics(options?: { page?: number; size?: number; status?: ApiContentStatus; query?: string }): Promise<ApiPage<ApiAdminLyric>>;
     listPublicLyrics(options?: { page?: number; size?: number; category?: string; reciter?: string; poet?: string; language?: ApiLyricLanguage }): Promise<ApiPage<ApiPublicLyric>>;
     loadLyricForEditing(reference: string): Promise<ApiAdminLyric>;
-    createLyric(metadata: LyricsMetadataRequest): Promise<ApiAdminLyric>;
-    updateLyricMetadata(reference: string, metadata: LyricsMetadataRequest): Promise<ApiAdminLyric>;
+    createLyric(request: CombinedLyricsCreateRequest): Promise<ApiAdminLyric>;
+    updateLyricMetadata(reference: string, request: CombinedLyricsUpdateRequest): Promise<ApiAdminLyric>;
     loadLanguageVersion(reference: string, languageCode: ApiLyricLanguage): Promise<ApiLanguageVersion | null>;
     saveLanguageVersion(reference: string, languageCode: ApiLyricLanguage, document: JSONContent, expectedRowVersion: number | null, changeNote?: string): Promise<ApiAdminLyric>;
-    setLanguageStatus(reference: string, languageCode: ApiLyricLanguage, status: ApiContentStatus): Promise<ApiAdminLyric>;
     setLyricStatus(reference: string, status: ApiContentStatus): Promise<ApiAdminLyric>;
-    loadPublicationStatus(reference: string): Promise<{ status: ApiContentStatus; languageVersions: Array<{ languageCode: ApiLyricLanguage; status: ApiContentStatus; rowVersion: number }> }>;
     deleteLyric(reference: string): Promise<void>;
 }
 

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import logoImage from "../assests/logo.png";
-import { GLOBAL_LANGUAGE_KEY, translateInterface } from "../interfacePreferences";
+import { GLOBAL_LANGUAGE_KEY } from "../interfacePreferences";
 import { LocalizedText, useInterfaceText } from "../app/providers/interfaceLanguage";
 
 export type IconName =
@@ -44,12 +44,20 @@ export function Btn({ children, onClick, variant = "primary", icon, type = "butt
     return <button type={type} className={`btn btn-${variant}`} onClick={onClick} disabled={disabled}>{label}{icon && <Icon name={icon} size={17} />}</button>;
 }
 
-export function InterfaceControls({ language, setLanguage, theme, setTheme, fontScale, setFontScale }: { language: string; setLanguage: (value: string) => void; theme: string; setTheme: (value: string) => void; fontScale: number; setFontScale: (value: number) => void }) {
-    const t = (key: string) => translateInterface(language, key);
+export function InterfaceControls({ language, setLanguage, fontScale, setFontScale }: { language: string; setLanguage: (value: string) => void; fontScale: number; setFontScale: (value: number) => void }) {
+    const t = useInterfaceText();
     return <div className="interface-controls">
         <label className="interface-language"><span className="sr-only">{t("Language")}</span><select aria-label={t("Language")} value={language} onChange={(event) => { const value = event.target.value; try { window.localStorage.setItem(GLOBAL_LANGUAGE_KEY, value); } catch { /* Storage is optional. */ } setLanguage(value); }}><option value="en">EN</option><option value="hi">हिन्दी</option><option value="ur">اردو</option></select></label>
         <button className="interface-control" aria-label={t("Decrease font size")} title={t("Decrease font size")} onClick={() => setFontScale(Math.max(0.9, Number((fontScale - 0.1).toFixed(2))))}><LocalizedText text={"A−"} /></button>
         <button className="interface-control" aria-label={t("Increase font size")} title={t("Increase font size")} onClick={() => setFontScale(Math.min(1.2, Number((fontScale + 0.1).toFixed(2))))}><LocalizedText text={"A+"} /></button>
-        <button className="interface-control theme-toggle" aria-label={t(theme === "dark" ? "Light theme" : "Dark theme")} title={t(theme === "dark" ? "Light theme" : "Dark theme")} onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>{theme === "dark" ? "☼" : "◐"}</button>
     </div>;
+}
+
+export function SectionThemeControl({ theme, setTheme }: { theme: string; setTheme: (value: string) => void }) {
+    const t = useInterfaceText();
+    const nextTheme = theme === "dark" ? "light" : "dark";
+    return <button className="interface-control section-theme-toggle" aria-label={t(theme === "dark" ? "Light theme" : "Dark theme")} title={t(theme === "dark" ? "Light theme" : "Dark theme")} onClick={() => setTheme(nextTheme)}>
+        {theme === "dark" ? "☼" : "◐"}
+        <span><LocalizedText text={theme === "dark" ? "Light theme" : "Dark theme"} /></span>
+    </button>;
 }

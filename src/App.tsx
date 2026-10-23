@@ -5,10 +5,11 @@ import { photos } from "./app/config/media";
 import { isAvailableDownloadUrl } from "./app/utils/downloadUrl";
 import { Footer } from "./components/layout/Footer";
 import { Header } from "./components/layout/Header";
-import { Btn, Icon, type IconName, Logo } from "./components/ui";
+import { Btn, Icon, SectionThemeControl, type IconName, Logo } from "./components/ui";
 import { Reveal } from "./components/common/Reveal";
 import { SectionHead } from "./components/common/SectionHead";
 import { Breadcrumbs, CategoryBrowseControl, DirectoryHeader, PageHero, SearchBox, Tabs } from "./components/common/PagePrimitives";
+import { BackButton } from "./components/common/BackButton";
 import { Home } from "./features/home/pages/Home";
 import { ServicesPage } from "./features/services-page/pages/ServicesPage";
 import { AboutPage } from "./features/about/pages/AboutPage";
@@ -19,14 +20,13 @@ import { Ebooks, BookDetail, BookReader } from "./features/ebooks/pages/EbookPag
 import { AudioCard, getAudioCategoryLabel } from "./features/audio/components/AudioCard";
 import { BookCard } from "./features/ebooks/components/BookCard";
 import { LyricsCard } from "./features/lyrics/components/LyricsCard";
+import { LyricTitle } from "./features/lyrics/components/LyricTitle";
 import { ReciterDisclosure } from "./features/lyrics/components/ReciterDisclosure";
 import { YouTubeVideoGrid } from "./features/lyrics/components/YouTubeVideoGrid";
-import { SpotifyTrackGrid } from "./features/audio/components/SpotifyTrackGrid";
 import { relatedVideoReferences } from "./features/lyrics/data/relatedVideoReferences";
-import { getSpotifyTrackId, spotifyTrackReferences } from "./features/audio/data/spotifyTracks.js";
 import { LyricsPage, lyricsRoutePaths } from "./features/lyrics/pages/LyricsPage";
 import { QuranHome, ParaPage, QuranTopics, SurahDirectory, SurahRead } from "./features/quran/pages/QuranPages";
-import { formatLyricDate, getLyricBookName, getLyricCategoryNames, getLyricWriterName } from "./features/lyrics/utils/lyricsPresentation";
+import { formatLyricDate, getLyricArtistNames, getLyricBookName, getLyricCategoryNames, getLyricWriterName } from "./features/lyrics/utils/lyricsPresentation";
 import { getRouteQueryParam } from "./app/utils/getRouteQueryParam";
 import { useContentCollection } from "./app/hooks/useContentCollection";
 import { audioCategories, audioLibrary, filterAudioLibrary, getAudioById } from "./audioData";
@@ -52,23 +52,28 @@ import {
   getLyricsByBook,
   getLyricsByLanguage,
   getLyricsBySubject,
+  normalizeLyricLanguageCode,
 } from "./lyricsData";
 
 type Route = string;
+const LYRICS_THEME_KEY = "zikr-lyrics-theme";
+const QURAN_THEME_KEY = "zikr-quran-theme";
+const quranRoutePaths = ["quran", "surahs", "surah-read", "para", "quran-topics"];
 
 const AdminContentPage = lazy(() => import("./features/admin/pages/AdminContentPage").then((module) => ({ default: module.AdminContentPage })));
 const LyricDocumentView = lazy(() => import("./features/lyrics/components/LyricRichText").then((module) => ({ default: module.LyricDocumentView })));
 
-function PublicLayout({ route, go, language, setLanguage, theme, setTheme, fontScale, setFontScale }: { route: Route; go: (r: Route) => void; language: string; setLanguage: (value: string) => void; theme: string; setTheme: (value: string) => void; fontScale: number; setFontScale: (value: number) => void }) {
+function PublicLayout({ route, routePath, go, language, setLanguage, fontScale, setFontScale, theme, setTheme }: { route: Route; routePath: string; go: (r: Route) => void; language: string; setLanguage: (value: string) => void; fontScale: number; setFontScale: (value: number) => void; theme: string; setTheme: (value: string) => void }) {
   return <>
-    <Header route={route} go={go} language={language} setLanguage={setLanguage} theme={theme} setTheme={setTheme} fontScale={fontScale} setFontScale={setFontScale} />
-    <Outlet />
-    <Footer go={go} />
+  <Header route={route} go={go} language={language} setLanguage={setLanguage} fontScale={fontScale} setFontScale={setFontScale} />
+  {routePath !== "home" && <div className="app-page-toolbar"><div className="container app-page-toolbar-inner"><BackButton routePath={routePath} />{(lyricsRoutePaths.includes(routePath) || routePath === "lyric-detail" || quranRoutePaths.includes(routePath)) && <SectionThemeControl theme={theme} setTheme={setTheme} />}</div></div>}
+  <Outlet />
+  <Footer go={go} />
   </>;
 }
 
-function BareLayout() {
-  return <Outlet />;
+function BareLayout({ routePath }: { routePath: string }) {
+  return <>{routePath === "book-reader" && <div className="app-page-toolbar"><div className="container app-page-toolbar-inner"><BackButton routePath={routePath} /></div></div>}<Outlet /></>;
 }
 
 function NotFound({ go }: { go: (r: Route) => void }) {
@@ -209,7 +214,7 @@ function PendingActionNotice({ pendingAction, action, onContinue, onDismiss }: {
   return <div className="auth-pending-notice" role="status"><span><LocalizedText text={"Sign-in complete. Continue your pending action?"} /></span><div><button type="button" onClick={onContinue}><LocalizedText text={"Continue"} /></button><button type="button" onClick={onDismiss}><LocalizedText text={"Cancel"} /></button></div></div>;
 }
 
-function formatAudioTime(totalSeconds) {
+function formatAudioTime(totalSeconds: number) {
   const safeSeconds = Number.isFinite(totalSeconds) ? Math.max(0, totalSeconds) : 0;
   const minutes = Math.floor(safeSeconds / 60);
   const seconds = Math.floor(safeSeconds % 60).toString().padStart(2, "0");
@@ -281,11 +286,12 @@ function LyricDetail({ go }: { go: (r: Route) => void }) {
   const [shareMessage, setShareMessage] = useState("");
   const lyricId = getRouteQueryParam("id");
   const lyric = editableLyrics.find((item) => item.id === lyricId || item.slug === lyricId) || getPublishedLyrics(editableLyrics)[0];
-  const [selectedLanguage, setSelectedLanguage] = useState(() => lyric?.languageVersions?.[0]?.code || "ur");
+  const [selectedLanguage, setSelectedLanguage] = useState(() => lyric?.languageVersions?.find((entry) => normalizeLyricLanguageCode(entry.code || entry.label || entry.script) === "hi")?.code || lyric?.languageVersions?.[0]?.code || "ur");
 
   useEffect(() => {
     if (!lyric) return;
-    const next = lyric.languageVersions.some((entry) => entry.code === selectedLanguage) ? selectedLanguage : lyric.languageVersions[0]?.code || "ur";
+    const selected = lyric.languageVersions.find((entry) => normalizeLyricLanguageCode(entry.code || entry.label || entry.script) === normalizeLyricLanguageCode(selectedLanguage));
+    const next = selected?.code || lyric.languageVersions.find((entry) => normalizeLyricLanguageCode(entry.code || entry.label || entry.script) === "hi")?.code || lyric.languageVersions[0]?.code || "ur";
     setSelectedLanguage(next);
   }, [lyric, selectedLanguage]);
 
@@ -295,7 +301,7 @@ function LyricDetail({ go }: { go: (r: Route) => void }) {
 
   const version = lyric.languageVersions.find((entry) => entry.code === selectedLanguage) || lyric.languageVersions[0];
   const metadataFields = [
-    ["Recited By", <ReciterDisclosure item={lyric} />],
+    ...(getLyricArtistNames(lyric).length ? [["Recited By", <ReciterDisclosure item={lyric} go={go} />] as const] : []),
     ["Written By", getLyricWriterName(lyric) || "Traditional"],
     ["Published", formatLyricDate(lyric.createdAt)],
     ["Book", getLyricBookName(lyric) || "—"],
@@ -327,15 +333,12 @@ function LyricDetail({ go }: { go: (r: Route) => void }) {
   const relatedLyrics = getPublishedLyrics(editableLyrics).filter((entry) => entry.id !== lyric.id).slice(0, 2);
   const lyricVideoUrls = new Set((lyric.relatedVideos || []).map((video: { url: string }) => video.url));
   const suggestedVideos = [...(lyric.relatedVideos || []), ...relatedVideoReferences.filter((video) => !lyricVideoUrls.has(video.url))];
-  const lyricSpotifyIds = new Set((lyric.relatedAudio || []).map((audio: { url: string }) => getSpotifyTrackId(audio.url)).filter(Boolean));
-  const suggestedSpotifyTracks = spotifyTrackReferences.filter((track) => !lyricSpotifyIds.has(getSpotifyTrackId(track.url)));
-
   return <main className="reading-bg">
     <div className="container narrow">
       <Breadcrumbs items={["Lyrics", lyric.title]} go={go} />
       <article className="lyric-reading lyric-detail-page">
         <span className="badge">{getLyricCategoryNames(lyric).map(t).join(" • ") || t("Devotional")}</span>
-        <h1>{lyric.title}</h1>
+        <h1 className="lyric-detail-title"><LyricTitle title={lyric.title} /></h1>
         {lyric.tags?.[0] ? <p className="lead">{lyric.tags[0]} <LocalizedText text={"and remembrance"} /></p> : null}
         <div className="lyric-toolbar">
           <div className="lyric-toolbar-left">
@@ -366,7 +369,6 @@ function LyricDetail({ go }: { go: (r: Route) => void }) {
         </article>)}</div>
       </section> : null}
       <section className="related"><SectionHead title={interfaceAttributeText("Related Videos")} /><YouTubeVideoGrid videos={suggestedVideos.map((video, index) => ({ id: `${lyric.id}-video-${index}`, title: video.title || "YouTube video reference", url: video.url }))} /></section>
-      <section className="related"><SectionHead title={interfaceAttributeText("Suggested Audio")} /><SpotifyTrackGrid tracks={suggestedSpotifyTracks} /></section>
       <section className="related"><SectionHead title={interfaceAttributeText("Related Lyrics")} action="Read All Lyrics" onAction={() => go("lyrics")} /><div className="lyrics-grid">{relatedLyrics.map((item, index) => <LyricsCard item={item} index={index} key={item.id} onClick={() => go(`lyric-detail?id=${item.id}`)} />)}</div></section>
     </div>
   </main>;
@@ -382,6 +384,8 @@ export default function App() {
     return ["en", "hi", "ur"].includes(saved) ? saved : "en";
   });
   const [theme, setTheme] = useState(() => readPreference(THEME_KEY, "light") === "dark" ? "dark" : "light");
+  const [lyricsTheme, setLyricsTheme] = useState(() => readPreference(LYRICS_THEME_KEY, readPreference(THEME_KEY, "light")) === "dark" ? "dark" : "light");
+  const [quranTheme, setQuranTheme] = useState(() => readPreference(QURAN_THEME_KEY, readPreference(THEME_KEY, "light")) === "dark" ? "dark" : "light");
   const [fontScale, setFontScale] = useState(() => {
     const saved = Number(readPreference(FONT_SCALE_KEY, "1"));
     return Number.isFinite(saved) ? Math.max(0.9, Math.min(1.2, saved)) : 1;
@@ -390,16 +394,22 @@ export default function App() {
   const [activeAudioId, setActiveAudioId] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState(() => readPendingAction());
 
+  const isLyricsRoute = lyricsRoutePaths.includes(routePath) || routePath === "lyric-detail";
+  const isQuranRoute = quranRoutePaths.includes(routePath);
+  const activeTheme = isLyricsRoute ? lyricsTheme : isQuranRoute ? quranTheme : theme;
+
   useEffect(() => {
-    document.documentElement.dataset.theme = theme;
+    document.documentElement.dataset.theme = activeTheme;
     document.documentElement.lang = language;
     document.documentElement.style.setProperty("--interface-scale", String(fontScale));
     try {
       window.localStorage.setItem(GLOBAL_LANGUAGE_KEY, language);
       window.localStorage.setItem(THEME_KEY, theme);
+      window.localStorage.setItem(LYRICS_THEME_KEY, lyricsTheme);
+      window.localStorage.setItem(QURAN_THEME_KEY, quranTheme);
       window.localStorage.setItem(FONT_SCALE_KEY, String(fontScale));
     } catch { /* Preference storage may be unavailable in private browsing. */ }
-  }, [fontScale, language, theme]);
+  }, [activeTheme, fontScale, language, lyricsTheme, quranTheme, theme]);
 
   useEffect(() => {
     const syncAuth = () => setIsLoggedIn(adminAuth.hasAdminSession());
@@ -421,7 +431,8 @@ export default function App() {
     const [path, ...queryParts] = r.replace(/^#/, "").split("?");
     const destination = !path || path === "home" ? "/" : `/${path}`;
     const query = queryParts.length ? `?${queryParts.join("?")}` : "";
-    navigate(`${destination}${query}`);
+    const currentState = location.state && typeof location.state === "object" ? location.state : {};
+    navigate(`${destination}${query}`, { state: { ...currentState, zikrPrevious: `${location.pathname}${location.search}` } });
   };
 
   const previousRoutePath = useRef(routePath);
@@ -551,10 +562,10 @@ export default function App() {
   };
 
   const headerRoute = lyricsRoutePaths.includes(routePath) ? "lyrics" : routePath;
-  return <InterfaceLanguageContext.Provider value={language}><div className="app-shell" data-theme={theme}>
+  return <InterfaceLanguageContext.Provider value={language}><div className="app-shell" data-theme={activeTheme}>
     {isLoggedIn && pendingAction && !["login", "register"].includes(routePath) && <PendingActionNotice pendingAction={pendingAction} action={pendingAction.action} onContinue={resumePendingAction} onDismiss={dismissPendingAction} />}
     <Routes>
-      <RouterRoute element={<PublicLayout route={headerRoute} go={go} language={language} setLanguage={setLanguage} theme={theme} setTheme={setTheme} fontScale={fontScale} setFontScale={setFontScale} />}>
+      <RouterRoute element={<PublicLayout route={headerRoute} routePath={routePath} go={go} language={language} setLanguage={setLanguage} theme={isLyricsRoute ? lyricsTheme : quranTheme} setTheme={isLyricsRoute ? setLyricsTheme : setQuranTheme} fontScale={fontScale} setFontScale={setFontScale} />}>
         <RouterRoute index element={<Home go={go} onPlayAudio={handlePlayAudio} onDownloadAudio={handleDownloadAudio} activeAudioId={activeAudioId} />} />
         <RouterRoute path="home" element={<Navigate to="/" replace />} />
         <RouterRoute path="lyrics" element={<LyricsPage go={go} route={route} />} />
@@ -579,7 +590,7 @@ export default function App() {
         <RouterRoute path="contact" element={<ContactPage go={go} />} />
         <RouterRoute path="*" element={<NotFound go={go} />} />
       </RouterRoute>
-      <RouterRoute element={<BareLayout />}>
+      <RouterRoute element={<BareLayout routePath={routePath} />}>
         <RouterRoute path="login" element={<AuthPage mode="login" go={go} />} />
         <RouterRoute path="register" element={<AuthPage mode="register" go={go} />} />
         <RouterRoute path="admin" element={<Suspense fallback={<main className="admin-access" role="status">Loading content admin…</main>}><AdminContentPage go={go} isLoggedIn={isLoggedIn} onLogout={handleLogout} /></Suspense>} />
