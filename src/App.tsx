@@ -19,16 +19,15 @@ import { AudioPage, AudioDetail } from "./features/audio/pages/AudioPages";
 import { Ebooks, BookDetail, BookReader } from "./features/ebooks/pages/EbookPages";
 import { AudioCard, getAudioCategoryLabel } from "./features/audio/components/AudioCard";
 import { BookCard } from "./features/ebooks/components/BookCard";
-import { LyricsCard } from "./features/lyrics/components/LyricsCard";
 import { LyricTitle } from "./features/lyrics/components/LyricTitle";
 import { ReciterDisclosure } from "./features/lyrics/components/ReciterDisclosure";
 import { YouTubeVideoGrid } from "./features/lyrics/components/YouTubeVideoGrid";
-import { relatedVideoReferences } from "./features/lyrics/data/relatedVideoReferences";
 import { LyricsPage, lyricsRoutePaths } from "./features/lyrics/pages/LyricsPage";
 import { QuranHome, ParaPage, QuranTopics, SurahDirectory, SurahRead } from "./features/quran/pages/QuranPages";
 import { formatLyricDate, getLyricArtistNames, getLyricBookName, getLyricCategoryNames, getLyricWriterName } from "./features/lyrics/utils/lyricsPresentation";
 import { getRouteQueryParam } from "./app/utils/getRouteQueryParam";
-import { useContentCollection } from "./app/hooks/useContentCollection";
+import { lyricsApi } from "./features/lyrics/services/lyricsApiService.js";
+import type { ApiPublicLyric } from "./features/lyrics/services/lyricsApiService.js";
 import { audioCategories, audioLibrary, filterAudioLibrary, getAudioById } from "./audioData";
 import { ebookCategories, ebookLibrary, filterEbooks, getEbookById } from "./bookData";
 import { clearPendingAction, createPendingAction, readPendingAction, savePendingAction, safeReturnTo } from "./authActions.js";
@@ -37,23 +36,7 @@ import { FONT_SCALE_KEY, GLOBAL_LANGUAGE_KEY, THEME_KEY, readPreference, transla
 import { lookupWordMeanings } from "./wordMeaningService";
 import { surahData } from "./features/quran/data/surahMetadata";
 import { toggleStoredQuranBookmark } from "./features/quran/services/quranBookmarks";
-import {
-  artists,
-  lyricBooks,
-  lyricCategories,
-  lyricSubjects,
-  lyrics as lyricLibrary,
-  poets,
-  getPublishedLyrics,
-  filterLyricsByTitle,
-  getLyricsByCategory,
-  getLyricsByArtist,
-  getLyricsByPoet,
-  getLyricsByBook,
-  getLyricsByLanguage,
-  getLyricsBySubject,
-  normalizeLyricLanguageCode,
-} from "./lyricsData";
+import { lyricSubjects } from "./lyricsData";
 
 type Route = string;
 const LYRICS_THEME_KEY = "zikr-lyrics-theme";
@@ -282,34 +265,65 @@ function PersistentAudioPlayer({ track, onClose }: { track: (typeof audioLibrary
 
 function LyricDetail({ go }: { go: (r: Route) => void }) {
   const t = useInterfaceText();
-  const editableLyrics = useContentCollection("lyrics", lyricLibrary);
   const [shareMessage, setShareMessage] = useState("");
   const lyricId = getRouteQueryParam("id");
-  const lyric = editableLyrics.find((item) => item.id === lyricId || item.slug === lyricId) || getPublishedLyrics(editableLyrics)[0];
-  const [selectedLanguage, setSelectedLanguage] = useState(() => lyric?.languageVersions?.find((entry) => normalizeLyricLanguageCode(entry.code || entry.label || entry.script) === "hi")?.code || lyric?.languageVersions?.[0]?.code || "ur");
+  const [lyric, setLyric] = useState<ApiPublicLyric | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [notFound, setNotFound] = useState(false);
+  const [retry, setRetry] = useState(0);
+  const [selectedLanguage, setSelectedLanguage] = useState("");
 
   useEffect(() => {
-    if (!lyric) return;
-    const selected = lyric.languageVersions.find((entry) => normalizeLyricLanguageCode(entry.code || entry.label || entry.script) === normalizeLyricLanguageCode(selectedLanguage));
-    const next = selected?.code || lyric.languageVersions.find((entry) => normalizeLyricLanguageCode(entry.code || entry.label || entry.script) === "hi")?.code || lyric.languageVersions[0]?.code || "ur";
-    setSelectedLanguage(next);
-  }, [lyric, selectedLanguage]);
+    let active = true;
+    setLyric(null);
+    setLoading(true);
+    setLoadError("");
+    setNotFound(false);
+    if (!lyricId) {
+      setLoading(false);
+      setLoadError("A lyric reference is required.");
+      return () => { active = false; };
+    }
+    void lyricsApi.getPublicLyric(lyricId).then((result) => {
+      if (active) {
+        setLyric(result);
+        setSelectedLanguage(result.languageVersions.find((entry) => entry.code === "hi")?.code || result.languageVersions[0]?.code || "");
+      }
+    }).catch((error: unknown) => {
+      if (active) {
+        setNotFound(typeof error === "object" && error !== null && "status" in error && error.status === 404);
+        setLoadError(error instanceof Error ? error.message : "The requested lyric could not be loaded.");
+      }
+    }).finally(() => {
+      if (active) setLoading(false);
+    });
+    return () => { active = false; };
+  }, [lyricId, retry]);
 
+  if (loading) {
+    return <main className="reading-bg"><div className="container narrow"><p role="status"><LocalizedText text={"Loading lyric..."} /></p></div></main>;
+  }
   if (!lyric) {
-    return <main className="reading-bg"><div className="container narrow"><Breadcrumbs items={["Lyrics", "Not found"]} go={go} /><div className="empty"><Icon name="book" size={32} /><h3><LocalizedText text={"Lyric not found"} /></h3><p><LocalizedText text={"The requested lyric is unavailable in the current library. Try browsing from the main Lyrics page."} /></p><button className="btn btn-primary" onClick={() => go("lyrics")}><LocalizedText text={"Back to all lyrics"} /></button></div></div></main>;
+    return <main className="reading-bg"><div className="container narrow"><Breadcrumbs items={["Lyrics", notFound ? "Not found" : "Unavailable"]} go={go} /><div className="empty"><Icon name="book" size={32} /><h3><LocalizedText text={notFound ? "Lyric not found" : "Lyric unavailable"} /></h3><p><LocalizedText text={loadError || "The requested lyric is unavailable. Try browsing from the main Lyrics page."} /></p>{!notFound && <button className="btn btn-primary" onClick={() => setRetry((count) => count + 1)}><LocalizedText text={"Try again"} /></button>}<button className="btn btn-primary" onClick={() => go("lyrics")}><LocalizedText text={"Back to all lyrics"} /></button></div></div></main>;
   }
 
   const version = lyric.languageVersions.find((entry) => entry.code === selectedLanguage) || lyric.languageVersions[0];
+  const versionText = version?.text || "";
+  const writerName = getLyricWriterName(lyric);
+  const categoryNames = getLyricCategoryNames(lyric).map(t);
+  const bookName = getLyricBookName(lyric);
+  const subjectName = lyric.subjectIds?.[0] ? lyricSubjects.find((subject) => subject.id === lyric.subjectIds[0])?.name : undefined;
   const metadataFields = [
     ...(getLyricArtistNames(lyric).length ? [["Recited By", <ReciterDisclosure item={lyric} go={go} />] as const] : []),
-    ["Written By", getLyricWriterName(lyric) || "Traditional"],
-    ["Published", formatLyricDate(lyric.createdAt)],
-    ["Book", getLyricBookName(lyric) || "—"],
-    ["Subject", lyric.subjectIds?.length ? lyricSubjects.find((subject) => subject.id === lyric.subjectIds[0])?.name || "—" : "—"],
+    ...(writerName !== "Unknown writer" ? [["Written By", writerName] as const] : []),
+    ...(lyric.createdAt ? [["Added", formatLyricDate(lyric.createdAt)] as const] : []),
+    ...(bookName ? [["Book", bookName] as const] : []),
+    ...(subjectName ? [["Subject", subjectName] as const] : []),
   ] as const;
 
   const share = async () => {
-    const url = `${window.location.origin}${window.location.pathname}#lyric-detail?id=${lyric.id}`;
+    const url = `${window.location.origin}${window.location.pathname}#lyric-detail?id=${encodeURIComponent(lyric.id)}`;
     const shareText = lyric.title;
 
     try {
@@ -330,33 +344,30 @@ function LyricDetail({ go }: { go: (r: Route) => void }) {
     }
   };
 
-  const relatedLyrics = getPublishedLyrics(editableLyrics).filter((entry) => entry.id !== lyric.id).slice(0, 2);
-  const lyricVideoUrls = new Set((lyric.relatedVideos || []).map((video: { url: string }) => video.url));
-  const suggestedVideos = [...(lyric.relatedVideos || []), ...relatedVideoReferences.filter((video) => !lyricVideoUrls.has(video.url))];
   return <main className="reading-bg">
     <div className="container narrow">
       <Breadcrumbs items={["Lyrics", lyric.title]} go={go} />
       <article className="lyric-reading lyric-detail-page">
-        <span className="badge">{getLyricCategoryNames(lyric).map(t).join(" • ") || t("Devotional")}</span>
+        {categoryNames.length > 0 && <span className="badge">{categoryNames.join(" • ")}</span>}
         <h1 className="lyric-detail-title"><LyricTitle title={lyric.title} /></h1>
         {lyric.tags?.[0] ? <p className="lead">{lyric.tags[0]} <LocalizedText text={"and remembrance"} /></p> : null}
         <div className="lyric-toolbar">
           <div className="lyric-toolbar-left">
-            <label className="lang-select">
+            {lyric.languageVersions.length > 0 && <label className="lang-select">
               <span className="sr-only"><LocalizedText text={"Select language"} /></span>
-              <select aria-label={interfaceAttributeText("Select lyric language")} value={selectedLanguage} onChange={(event) => setSelectedLanguage(event.target.value)}>
+              <select aria-label={interfaceAttributeText("Select lyric language")} value={version?.code || ""} onChange={(event) => setSelectedLanguage(event.target.value)}>
                 {lyric.languageVersions.map((entry) => <option key={entry.code} value={entry.code}>{entry.label}</option>)}
               </select>
-            </label>
+            </label>}
           </div>
           <div className="lyric-toolbar-actions"><Btn variant="outline" icon="share" onClick={() => void share()}><LocalizedText text={"Share"} /></Btn></div>
         </div>
         {shareMessage && <div className="lyric-share-status"><LocalizedText text={shareMessage} /></div>}
         {lyric.tags?.length ? <div className="tag-row">{lyric.tags.map((tag) => <span key={tag} className="badge soft-badge">#{tag}</span>)}</div> : null}
-        <div className="lyrics-text" lang={version.code} dir={version.dir || "ltr"}>
-          {version.document
-            ? <Suspense fallback={<p className="lyrics-content">{version.text}</p>}><LyricDocumentView document={version.document} language={version.code} dir={version.dir || "ltr"} className="lyrics-content" /></Suspense>
-            : <p className="lyrics-content">{version.text.split("\n").map((line, index) => <span key={`${version.code}-${index}`}><span>{line}</span>{index < version.text.split("\n").length - 1 ? <br /> : null}</span>)}</p>}
+        <div className="lyrics-text" lang={version?.code} dir={version?.dir || "ltr"}>
+          {version?.document || version?.content
+            ? <Suspense fallback={<p className="lyrics-content">{versionText}</p>}><LyricDocumentView document={version.document || version.content || ""} language={version.code} dir={version.dir || "ltr"} className="lyrics-content" /></Suspense>
+            : versionText ? <p className="lyrics-content">{versionText.split("\n").map((line, index) => <span key={`${version.code}-${index}`}><span>{line}</span>{index < versionText.split("\n").length - 1 ? <br /> : null}</span>)}</p> : <p className="lyrics-content"><LocalizedText text={"No translation is available for this lyric yet."} /></p>}
           {lyric.tags?.length ? <aside><LocalizedText text={"Keywords:"} trailing=" " />{lyric.tags.join(" • ")}</aside> : null}
         </div>
         <div className="detail-meta-row">{metadataFields.map(([label, value]) => <div key={label} className="detail-meta-item"><small>{t(label)}</small><span>{value}</span></div>)}</div>
@@ -368,8 +379,7 @@ function LyricDetail({ go }: { go: (r: Route) => void }) {
           <div className="audio-info"><span className="badge"><LocalizedText text={"Audio"} /></span><h3>{item.title}</h3><p><LocalizedText text={"Related to"} trailing=" " />{lyric.title}</p><div className="media-meta"><span><LocalizedText text={"Link"} /></span><span><LocalizedText text={"Available"} /></span></div></div>
         </article>)}</div>
       </section> : null}
-      <section className="related"><SectionHead title={interfaceAttributeText("Related Videos")} /><YouTubeVideoGrid videos={suggestedVideos.map((video, index) => ({ id: `${lyric.id}-video-${index}`, title: video.title || "YouTube video reference", url: video.url }))} /></section>
-      <section className="related"><SectionHead title={interfaceAttributeText("Related Lyrics")} action="Read All Lyrics" onAction={() => go("lyrics")} /><div className="lyrics-grid">{relatedLyrics.map((item, index) => <LyricsCard item={item} index={index} key={item.id} onClick={() => go(`lyric-detail?id=${item.id}`)} />)}</div></section>
+      {lyric.relatedVideos?.length ? <section className="related"><SectionHead title={interfaceAttributeText("Related Videos")} /><YouTubeVideoGrid videos={lyric.relatedVideos.map((video, index) => ({ id: `${lyric.id}-video-${index}`, title: video.title || "YouTube video reference", url: video.url }))} /></section> : null}
     </div>
   </main>;
 }

@@ -48,7 +48,9 @@ export interface ApiPublicLanguageVersion {
     label: string;
     script: string;
     dir: "ltr" | "rtl";
-    document: JSONContent;
+    document: JSONContent | null;
+    contentFormat: "TIPTAP_JSON" | "HTML";
+    content: string | null;
     text: string | null;
 }
 
@@ -118,6 +120,8 @@ export type CombinedLyricsUpdateRequest = CombinedLyricsCreateRequest;
 export interface LyricsApiService {
     listAdminLyrics(options?: { page?: number; size?: number; status?: ApiContentStatus; query?: string }): Promise<ApiPage<ApiAdminLyric>>;
     listPublicLyrics(options?: { page?: number; size?: number; category?: string; reciter?: string; poet?: string; language?: ApiLyricLanguage }): Promise<ApiPage<ApiPublicLyric>>;
+    listAllPublicLyrics(options?: { size?: number; category?: string; reciter?: string; poet?: string; language?: ApiLyricLanguage }): Promise<ApiPublicLyric[]>;
+    getPublicLyric(reference: string): Promise<ApiPublicLyric>;
     loadLyricForEditing(reference: string): Promise<ApiAdminLyric>;
     createLyric(request: CombinedLyricsCreateRequest): Promise<ApiAdminLyric>;
     updateLyricMetadata(reference: string, request: CombinedLyricsUpdateRequest): Promise<ApiAdminLyric>;

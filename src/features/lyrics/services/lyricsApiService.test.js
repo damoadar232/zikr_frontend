@@ -198,6 +198,59 @@ test("language save removes unsupported code marks while preserving lyric text a
     });
 });
 
+test("public list loads every reported page and detail lookup uses the exact reference", async () => {
+    const calls = [];
+    const api = createLyricsApi({
+        baseUrl: "https://api.test",
+        auth: {
+            authenticatedFetch: async () => assert.fail("public lyrics requests must not use admin authentication"),
+        },
+        fetchImpl: async (url, options) => {
+            calls.push({ url, options });
+            if (url.includes("?")) {
+                const page = Number(new URL(url).searchParams.get("page"));
+                return response(200, {
+                    data: {
+                        items: [{ id: `lyric-${page}`, title: `Lyric ${page}` }],
+                        page,
+                        size: 100,
+                        totalElements: 3,
+                        totalPages: 3,
+                    },
+                });
+            }
+            return response(200, { data: { id: "legacy/id", title: "Exact detail" } });
+        },
+    });
+
+    const items = await api.listAllPublicLyrics({ size: 100 });
+    const detail = await api.getPublicLyric("legacy/id");
+
+    assert.deepEqual(items.map((item) => item.id), ["lyric-0", "lyric-1", "lyric-2"]);
+    assert.equal(detail.title, "Exact detail");
+    assert.deepEqual(calls.map(({ url }) => url), [
+        "https://api.test/api/v1/lyrics?page=0&size=100",
+        "https://api.test/api/v1/lyrics?page=1&size=100",
+        "https://api.test/api/v1/lyrics?page=2&size=100",
+        "https://api.test/api/v1/lyrics/legacy%2Fid",
+    ]);
+    assert.ok(calls.every(({ options }) => options.method === "GET"));
+});
+
+test("public detail lookup surfaces an HTTP 404 without returning a fallback record", async () => {
+    const api = createLyricsApi({
+        baseUrl: "https://api.test",
+        fetchImpl: async () => response(404, { error: "NOT_FOUND", message: "Published lyric not found." }),
+    });
+
+    await assert.rejects(api.getPublicLyric("missing-lyric"), (error) => {
+        assert.equal(error.status, 404);
+        assert.equal(error.code, "NOT_FOUND");
+        assert.equal(error.message, "Published lyric not found.");
+        return true;
+    });
+});
+
 test("all supported language saves sanitize fonts without losing text or valid formatting", async () => {
     const calls = [];
     const api = createLyricsApi({

@@ -56,10 +56,27 @@ export function createLyricsApi({ baseUrl = API_BASE_URL, auth = adminAuth, fetc
         `/api/v1/admin/lyrics/${encodeURIComponent(reference)}/status`, { method: "PATCH", body: { status } });
     const deleteLyric = (reference) => request(`/api/v1/admin/lyrics/${encodeURIComponent(reference)}`, { method: "DELETE" });
     const listPublicLyrics = (options = {}) => request(`/api/v1/lyrics${queryString(options)}`, { authenticated: false });
+    const listAllPublicLyrics = async ({ size = 100, ...filters } = {}) => {
+        const firstPage = await listPublicLyrics({ ...filters, page: 0, size });
+        const items = [...firstPage.items];
+        const pageNumbers = Array.from({ length: Math.max(0, firstPage.totalPages - 1) }, (_, index) => index + 1);
+
+        for (let index = 0; index < pageNumbers.length; index += 4) {
+            const pages = await Promise.all(pageNumbers.slice(index, index + 4).map((page) =>
+                listPublicLyrics({ ...filters, page, size })));
+            pages.forEach((page) => items.push(...page.items));
+        }
+
+        return items;
+    };
+    const getPublicLyric = (reference) => request(
+        `/api/v1/lyrics/${encodeURIComponent(reference)}`, { authenticated: false });
 
     return {
         listAdminLyrics,
         listPublicLyrics,
+        listAllPublicLyrics,
+        getPublicLyric,
         loadLyricForEditing,
         createLyric,
         updateLyricMetadata,

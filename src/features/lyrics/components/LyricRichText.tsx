@@ -47,18 +47,22 @@ export const lyricRichTextExtensions = [
     LyricTypography,
 ];
 
-export function LyricDocumentView({ document, language, dir, className = "" }: { document: JSONContent; language: string; dir: string; className?: string }) {
+export function LyricDocumentView({ document, language, dir, className = "" }: { document: JSONContent | string; language: string; dir: string; className?: string }) {
+    const content = typeof document === "string" ? sanitizePastedLyricHTML(document) : sanitizeLyricDocument(document);
     const editor = useEditor({
         extensions: lyricRichTextExtensions,
-        content: sanitizeLyricDocument(document),
+        content,
         editable: false,
         immediatelyRender: false,
         editorProps: { attributes: { lang: language, dir }, transformPastedHTML: sanitizePastedLyricHTML },
     });
 
     useEffect(() => {
-        if (!editor || JSON.stringify(editor.getJSON()) === JSON.stringify(document)) return;
-        editor.commands.setContent(sanitizeLyricDocument(document), { emitUpdate: false });
+        if (!editor) return;
+        const currentContent = typeof document === "string" ? editor.getHTML() : JSON.stringify(editor.getJSON());
+        const nextContent = typeof document === "string" ? content : JSON.stringify(content);
+        if (currentContent === nextContent) return;
+        editor.commands.setContent(content, { emitUpdate: false });
     }, [document, editor]);
 
     return <div className={`lyric-rich-view ${className}`} lang={language} dir={dir}><EditorContent editor={editor} /></div>;

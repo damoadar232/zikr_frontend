@@ -5408,6 +5408,10 @@ html[data-theme="dark"] .detail-meta-item {
     box-shadow: 0 12px 32px rgba(24, 20, 14, .12)
 }
 
+.editorial-lyric--no-image {
+    background: var(--green)
+}
+
 .editorial-lyric>img {
     position: absolute;
     inset: 0;
