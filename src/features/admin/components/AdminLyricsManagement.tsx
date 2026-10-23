@@ -427,13 +427,32 @@ export function AdminLyricsManagement() {
             metadataSaved = true;
             const reference = String(saved.id);
             const previousVersions = editing?.languageVersions || [];
+            const failedLanguages: Array<{ code: ApiLyricLanguage; reason: string }> = [];
             for (const { code, editorCode } of languages) {
                 const document = documents[editorCode] || emptyDocument();
                 const existing = previousVersions.find((version) => version.languageCode === code);
                 const changed = JSON.stringify(existing?.document || emptyDocument()) !== JSON.stringify(document);
                 if (changed || (creating && hasText(document))) {
-                    await lyricsApi.saveLanguageVersion(reference, code, document, existing?.rowVersion ?? null);
+                    try {
+                        saved = await lyricsApi.saveLanguageVersion(reference, code, document, existing?.rowVersion ?? null);
+                    } catch (languageError) {
+                        failedLanguages.push({
+                            code,
+                            reason: languageError instanceof Error ? languageError.message : "The language version could not be saved.",
+                        });
+                    }
                 }
+            }
+            if (failedLanguages.length > 0) {
+                setCreating(false);
+                setEditing(saved);
+                await refresh();
+                setError(
+                    `Metadata was saved for lyric ID ${reference}, but these translations failed: ${failedLanguages
+                        .map(({ code, reason }) => `${languageLabel(code)} (${reason})`)
+                        .join("; ")}. Save again to retry using this lyric ID.`,
+                );
+                return;
             }
             setNotice("Lyrics saved to the authenticated API.");
             setCreating(false);

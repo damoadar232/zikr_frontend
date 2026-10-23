@@ -32,6 +32,24 @@ class TiptapDocumentValidatorTest {
     }
 
     @Test
+    void acceptsEveryFontFamilySupportedByTheBackend() throws Exception {
+        for (String fontFamily : new String[] {
+                "Noto Nastaliq Urdu", "Noto Sans Devanagari", "DM Sans", "Georgia"
+        }) {
+            JsonNode document = objectMapper.readTree("""
+                    {"type":"doc","content":[{"type":"paragraph","content":[
+                      {"type":"text","text":"translation","marks":[
+                        {"type":"textStyle","attrs":{"fontFamily":"%s"}}
+                      ]}
+                    ]}]}
+                    """.formatted(fontFamily));
+
+            assertEquals(fontFamily, TiptapDocumentValidator.validate(document).document()
+                    .at("/content/0/content/0/marks/0/attrs/fontFamily").asText());
+        }
+    }
+
+    @Test
     void rejectsUnsupportedNodesMarksAttributesAndUnsafeMarkup() throws Exception {
         assertInvalid("{\"type\":\"doc\",\"content\":[{\"type\":\"image\"}]}");
         assertInvalid(

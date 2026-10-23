@@ -148,15 +148,19 @@ test("language save removes unsupported code marks while preserving lyric text a
                 marks: [
                     { type: "code" },
                     { type: "bold" },
-                    { type: "textStyle", attrs: { color: "#D4AF65", fontSize: "24px" } },
+                    { type: "textStyle", attrs: { color: "#D4AF65", fontFamily: "Noto Naskh Arabic", fontSize: "24px" } },
                 ],
             }],
         }, {
             type: "paragraph",
             content: [
-                { type: "text", text: "Salam" },
+                { type: "text", text: "Salam", marks: [{ type: "textStyle", attrs: { fontFamily: "Noto Naskh Arabic" } }] },
                 { type: "hardBreak" },
-                { type: "text", text: "world", marks: [{ type: "italic" }, { type: "underline" }] },
+                { type: "text", text: "world", marks: [
+                    { type: "italic" },
+                    { type: "underline" },
+                    { type: "textStyle", attrs: { fontFamily: "Noto Nastaliq Urdu" } },
+                ] },
             ],
         }],
     };
@@ -181,7 +185,11 @@ test("language save removes unsupported code marks while preserving lyric text a
                 content: [
                     { type: "text", text: "Salam" },
                     { type: "hardBreak" },
-                    { type: "text", text: "world", marks: [{ type: "italic" }, { type: "underline" }] },
+                    { type: "text", text: "world", marks: [
+                        { type: "italic" },
+                        { type: "underline" },
+                        { type: "textStyle", attrs: { fontFamily: "Noto Nastaliq Urdu" } },
+                    ] },
                 ],
             }],
         },
@@ -190,7 +198,7 @@ test("language save removes unsupported code marks while preserving lyric text a
     });
 });
 
-test("Hindi and Urdu language documents keep supported text marks when saved", async () => {
+test("all supported language saves sanitize fonts without losing text or valid formatting", async () => {
     const calls = [];
     const api = createLyricsApi({
         baseUrl: "https://api.test",
@@ -203,18 +211,80 @@ test("Hindi and Urdu language documents keep supported text marks when saved", a
         type: "doc",
         content: [{
             type: "paragraph",
-            content: [{ type: "text", text: "Translation", marks: [{ type: "bold" }, { type: "underline" }] }],
+            attrs: { textAlign: "right", paragraphSpacing: "16px" },
+            content: [{ type: "text", text: "Translation", marks: [
+                { type: "bold" },
+                { type: "underline" },
+                { type: "textStyle", attrs: { color: "#D4AF65", fontFamily: "Noto Naskh Arabic" } },
+            ] }],
         }],
     };
 
-    for (const language of ["hi", "ur"]) {
+    for (const language of ["hi", "ur", "roman"]) {
         await api.saveLanguageVersion("9", language, document, null);
-        assert.equal(JSON.parse(calls.at(-1).options.body).document.content[0].content[0].text, "Translation");
-        assert.deepEqual(JSON.parse(calls.at(-1).options.body).document.content[0].content[0].marks, [
+        const body = JSON.parse(calls.at(-1).options.body);
+        assert.equal(body.document.content[0].content[0].text, "Translation");
+        assert.deepEqual(body.document.content[0].attrs, { textAlign: "right", paragraphSpacing: "16px" });
+        assert.deepEqual(body.document.content[0].content[0].marks, [
             { type: "bold" },
             { type: "underline" },
+            { type: "textStyle", attrs: { color: "#D4AF65" } },
         ]);
     }
+});
+
+test("supported backend font families are retained and unsupported font-only marks are removed", async () => {
+    const calls = [];
+    const api = createLyricsApi({
+        baseUrl: "https://api.test",
+        auth: createAuth(async (url, options) => {
+            calls.push({ url, options });
+            return response(200, { data: {} });
+        }),
+    });
+    const document = {
+        type: "doc",
+        content: [{
+            type: "paragraph",
+            content: [
+                ...["Noto Nastaliq Urdu", "Noto Sans Devanagari", "DM Sans", "Georgia"].map((fontFamily) => ({
+                    type: "text",
+                    text: fontFamily,
+                    marks: [{ type: "textStyle", attrs: { fontFamily } }],
+                })),
+                { type: "text", text: " plain", marks: [{ type: "textStyle", attrs: { fontFamily: "Noto Naskh Arabic" } }] },
+            ],
+        }],
+    };
+
+    await api.saveLanguageVersion("9", "roman", document, null);
+
+    const content = JSON.parse(calls[0].options.body).document.content[0].content;
+    assert.deepEqual(content.slice(0, 4).map((node) => node.marks[0].attrs.fontFamily), [
+        "Noto Nastaliq Urdu", "Noto Sans Devanagari", "DM Sans", "Georgia",
+    ]);
+    assert.equal(content[4].text, " plain");
+    assert.equal(content[4].marks, undefined);
+});
+
+test("language save surfaces HTTP 400 validation errors instead of reporting success", async () => {
+    const api = createLyricsApi({
+        baseUrl: "https://api.test",
+        auth: createAuth(async () => response(400, {
+            error: "INVALID_PARAMETER",
+            message: "Unsupported font family.",
+        })),
+    });
+
+    await assert.rejects(api.saveLanguageVersion("9", "roman", {
+        type: "doc",
+        content: [{ type: "paragraph", content: [{ type: "text", text: "Translation" }] }],
+    }, null), (error) => {
+        assert.equal(error.status, 400);
+        assert.equal(error.code, "INVALID_PARAMETER");
+        assert.equal(error.message, "Unsupported font family.");
+        return true;
+    });
 });
 
 test("conflicts remain distinguishable and do not rewrite submitted documents", async () => {

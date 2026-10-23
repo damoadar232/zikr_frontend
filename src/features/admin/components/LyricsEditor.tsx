@@ -5,9 +5,9 @@ import { LyricDocumentView, lyricRichTextExtensions } from "../../lyrics/compone
 import { lyricFontFamilies, sanitizeLyricDocument, sanitizePastedLyricHTML } from "../../lyrics/utils/lyricDocumentSafety";
 
 const languages = [
-    { code: "ur", label: "Urdu", dir: "rtl" as const, defaultFont: "Noto Naskh Arabic" },
+    { code: "ur", label: "Urdu", dir: "rtl" as const, defaultFont: "Noto Nastaliq Urdu" },
     { code: "hi", label: "Hindi", dir: "ltr" as const, defaultFont: "Noto Sans Devanagari" },
-    { code: "en", label: "Roman English", dir: "ltr" as const, defaultFont: "Noto Serif" },
+    { code: "en", label: "Roman English", dir: "ltr" as const, defaultFont: "Georgia" },
 ];
 
 const fontSizes = ["14px", "16px", "18px", "20px", "24px", "28px", "32px", "36px"];

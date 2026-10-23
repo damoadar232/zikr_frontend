@@ -1,16 +1,10 @@
 import type { JSONContent } from "@tiptap/core";
 
 export const lyricFontFamilies = [
-    "Noto Naskh Arabic",
-    "Amiri",
     "Noto Nastaliq Urdu",
-    "Noto Sans Arabic",
     "Noto Sans Devanagari",
-    "Noto Serif Devanagari",
-    "Noto Sans Tamil",
-    "Noto Serif",
-    "Inter",
-    "Playfair Display",
+    "DM Sans",
+    "Georgia",
 ] as const;
 
 const allowedFontFamilies = new Set<string>(lyricFontFamilies);
@@ -47,17 +41,23 @@ function sanitizeAttributes(type: string, value: unknown) {
 }
 
 export function sanitizeLyricDocument(document: JSONContent): JSONContent {
-    const sanitizeNode = (node: JSONContent): JSONContent => ({
-        ...node,
-        ...(node.attrs ? { attrs: sanitizeAttributes(node.type || "", node.attrs) as Record<string, unknown> } : {}),
-        ...(node.marks ? {
-            marks: node.marks.filter((mark) => allowedTextMarks.has(mark.type)).map((mark) => ({
-                ...mark,
-                ...(mark.attrs ? { attrs: sanitizeAttributes(mark.type, mark.attrs) as Record<string, unknown> } : {}),
-            })),
-        } : {}),
-        ...(node.content ? { content: node.content.map(sanitizeNode) } : {}),
-    });
+    const sanitizeNode = (node: JSONContent): JSONContent => {
+        const { marks: originalMarks, ...nodeWithoutMarks } = node;
+        const marks = originalMarks?.flatMap((mark) => {
+            if (!allowedTextMarks.has(mark.type)) return [];
+            const attrs = mark.attrs
+                ? sanitizeAttributes(mark.type, mark.attrs) as Record<string, unknown>
+                : undefined;
+            if (mark.type === "textStyle" && (!attrs || Object.keys(attrs).length === 0)) return [];
+            return [{ ...mark, ...(attrs ? { attrs } : {}) }];
+        });
+        return {
+            ...nodeWithoutMarks,
+            ...(node.attrs ? { attrs: sanitizeAttributes(node.type || "", node.attrs) as Record<string, unknown> } : {}),
+            ...(marks?.length ? { marks } : {}),
+            ...(node.content ? { content: node.content.map(sanitizeNode) } : {}),
+        };
+    };
     return sanitizeNode(document);
 }
 
