@@ -41,6 +41,7 @@ export function createLyricsApi({ baseUrl = API_BASE_URL, auth = adminAuth, fetc
 
     const listAdminLyrics = ({ page, size, status, query } = {}) => request(
         `/api/v1/admin/lyrics${queryString({ page, size, status, query })}`);
+    const listAdminSubjects = () => request("/api/v1/admin/lyrics/subjects");
     const loadLyricForEditing = (reference) => request(`/api/v1/admin/lyrics/${encodeURIComponent(reference)}`);
     const createLyric = (metadata) => request("/api/v1/admin/lyrics", { method: "POST", body: metadata });
     const updateLyricMetadata = (reference, metadata) => request(
@@ -56,6 +57,7 @@ export function createLyricsApi({ baseUrl = API_BASE_URL, auth = adminAuth, fetc
         `/api/v1/admin/lyrics/${encodeURIComponent(reference)}/status`, { method: "PATCH", body: { status } });
     const deleteLyric = (reference) => request(`/api/v1/admin/lyrics/${encodeURIComponent(reference)}`, { method: "DELETE" });
     const listPublicLyrics = (options = {}) => request(`/api/v1/lyrics${queryString(options)}`, { authenticated: false });
+    const listPublicSubjects = () => request("/api/v1/lyrics/subjects", { authenticated: false });
     const listAllPublicLyrics = async ({ size = 100, ...filters } = {}) => {
         const firstPage = await listPublicLyrics({ ...filters, page: 0, size });
         const items = [...firstPage.items];
@@ -74,7 +76,9 @@ export function createLyricsApi({ baseUrl = API_BASE_URL, auth = adminAuth, fetc
 
     return {
         listAdminLyrics,
+        listAdminSubjects,
         listPublicLyrics,
+        listPublicSubjects,
         listAllPublicLyrics,
         getPublicLyric,
         loadLyricForEditing,

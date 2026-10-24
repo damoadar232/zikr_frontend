@@ -20,6 +20,17 @@ export interface ApiMediaReference {
     url: string;
 }
 
+export interface ApiLyricSubject {
+    id: string;
+    name: string;
+    numericId: number;
+}
+
+export interface ApiPublicSubject {
+    id: string;
+    name: string;
+}
+
 export interface ApiAdminLyric {
     id: number;
     legacyId: string;
@@ -119,7 +130,9 @@ export type CombinedLyricsUpdateRequest = CombinedLyricsCreateRequest;
 
 export interface LyricsApiService {
     listAdminLyrics(options?: { page?: number; size?: number; status?: ApiContentStatus; query?: string }): Promise<ApiPage<ApiAdminLyric>>;
+    listAdminSubjects(): Promise<ApiLyricSubject[]>;
     listPublicLyrics(options?: { page?: number; size?: number; category?: string; reciter?: string; poet?: string; language?: ApiLyricLanguage }): Promise<ApiPage<ApiPublicLyric>>;
+    listPublicSubjects(): Promise<ApiPublicSubject[]>;
     listAllPublicLyrics(options?: { size?: number; category?: string; reciter?: string; poet?: string; language?: ApiLyricLanguage }): Promise<ApiPublicLyric[]>;
     getPublicLyric(reference: string): Promise<ApiPublicLyric>;
     loadLyricForEditing(reference: string): Promise<ApiAdminLyric>;

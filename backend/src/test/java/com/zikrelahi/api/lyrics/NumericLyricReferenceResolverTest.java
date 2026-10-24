@@ -13,6 +13,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -67,6 +68,26 @@ class NumericLyricReferenceResolverTest {
                 LEFT JOIN subject_numeric_mappings m ON m.subject_key = s.id
                 WHERE m.id IS NULL
                 """, Integer.class));
+    }
+
+    @Test
+    void resolvesAllNineCategoryMappingsToTheirCanonicalKeys() {
+        Map.of(
+                "durood-o-salam", 1L,
+                "hamd", 2L,
+                "manqabat", 3L,
+                "naat-sharif", 4L,
+                "qawwali", 5L,
+                "sufi-kalam", 6L,
+                "dua", 7L,
+                "other-kalam", 8L,
+                "tazmeen", 9L)
+                .forEach((key, expectedId) -> {
+                    assertEquals(expectedId.longValue(),
+                            mappingId("category_numeric_mappings", "category_key", key));
+                    assertEquals(List.of(key), resolver.resolve(request(null, null,
+                            List.of(expectedId), null)).categoryKeys());
+                });
     }
 
     @Test

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { lyricCategories, lyricBooks, lyricSubjects, normalizeLyricLanguageCode } from "../../../lyricsData";
+import { lyricCategories, normalizeLyricLanguageCode } from "../../../lyricsData";
 import { interfaceAttributeText, LocalizedText, useInterfaceText } from "../../../app/providers/interfaceLanguage";
 import { getRouteQueryParam } from "../../../app/utils/getRouteQueryParam";
 import { DirectoryHeader, SearchBox } from "../../../components/common/PagePrimitives";
@@ -7,7 +7,10 @@ import { SectionHead } from "../../../components/common/SectionHead";
 import { Icon } from "../../../components/ui";
 import { LyricsCard } from "../components/LyricsCard";
 import { lyricsApi } from "../services/lyricsApiService.js";
-import type { ApiPublicLyric } from "../services/lyricsApiService.js";
+import type { ApiPublicLyric, ApiPublicSubject } from "../services/lyricsApiService.js";
+import { booksApi } from "../../books/services/booksApiService.js";
+import type { ApiBook } from "../../books/services/booksApiService.js";
+import { buildAvailableBrowseEntries } from "../utils/lyricsBrowseUtils.js";
 
 export const lyricsRoutePaths = ["lyrics", "lyrics-category", "lyrics-artists", "lyrics-poets", "lyrics-books", "lyrics-languages", "lyrics-subjects"];
 
@@ -45,6 +48,8 @@ function renderLyricCards(items: any[], go: (route: string) => void, displayLang
 export function LyricsPage({ go, route }: { go: (route: string) => void; route: string }) {
     const t = useInterfaceText();
     const [published, setPublished] = useState<ApiPublicLyric[]>([]);
+    const [books, setBooks] = useState<ApiBook[]>([]);
+    const [subjects, setSubjects] = useState<ApiPublicSubject[]>([]);
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState("");
     const [retry, setRetry] = useState(0);
@@ -55,8 +60,16 @@ export function LyricsPage({ go, route }: { go: (route: string) => void; route: 
         let active = true;
         setLoading(true);
         setLoadError("");
-        void lyricsApi.listAllPublicLyrics().then((items) => {
-            if (active) setPublished(items);
+        void Promise.all([
+            lyricsApi.listAllPublicLyrics(),
+            booksApi.listBooks(),
+            lyricsApi.listPublicSubjects(),
+        ]).then(([items, availableBooks, availableSubjects]) => {
+            if (active) {
+                setPublished(items);
+                setBooks(availableBooks);
+                setSubjects(availableSubjects);
+            }
         }).catch(() => {
             if (active) setLoadError("Lyrics could not be loaded.");
         }).finally(() => {
@@ -69,13 +82,15 @@ export function LyricsPage({ go, route }: { go: (route: string) => void; route: 
     const defaultLanguage = languageOptions.some(([code]) => code === "hi") ? "hi" : "all";
     const requestedLanguage = activeRoute === "lyrics" ? getRouteQueryParam("language") || defaultLanguage : "";
     const languageFilter = requestedLanguage === "all" ? "" : languageOptions.some(([code]) => code === normalizeLyricLanguageCode(requestedLanguage)) ? normalizeLyricLanguageCode(requestedLanguage) : defaultLanguage === "all" ? "" : defaultLanguage;
+    const buildEntries = (options: Array<{ id: string; name: string }>, getKeys: (lyric: ApiPublicLyric) => string[]) =>
+        buildAvailableBrowseEntries(options, published, getKeys);
     const optionConfig: Record<string, LyricsBrowseConfig> = {
-        "lyrics-category": { title: "Categories", heading: "Browse by Category", parameter: "category", noun: "categories", entries: lyricCategories.map(entry => ({ id: entry.id, name: entry.name, lyrics: published.filter(lyric => lyric.categoryIds.includes(entry.id)) })) },
-        "lyrics-artists": { title: "Naat-Khwaan / Reciters", heading: "Browse by Reciter", parameter: "artist", noun: "reciters", entries: Array.from(new Set(published.flatMap(lyric => lyric.reciters))).map(name => ({ id: name, name, lyrics: published.filter(lyric => lyric.reciters.includes(name)) })) },
-        "lyrics-poets": { title: "Poets", heading: "Browse by Poet", parameter: "poet", noun: "poets", entries: Array.from(new Set(published.map(lyric => lyric.writer).filter((name): name is string => Boolean(name?.trim())))).map(name => ({ id: name, name, lyrics: published.filter(lyric => lyric.writer === name) })) },
-        "lyrics-books": { title: "Books", heading: "Browse by Source", parameter: "book", noun: "books", entries: lyricBooks.map(entry => ({ id: entry.id, name: entry.title, lyrics: published.filter(lyric => lyric.bookId === entry.id) })) },
-        "lyrics-languages": { title: "Language", heading: "Browse by Language", parameter: "language", noun: "languages", entries: Array.from(new Map<string, string>(published.flatMap(lyric => lyric.languageVersions || []).map(version => [version.code, version.label] as [string, string])).entries()).map(([id, name]) => ({ id, name, lyrics: published.filter(lyric => lyric.languageVersions.some(version => normalizeLyricLanguageCode(version.code) === normalizeLyricLanguageCode(id))) })) },
-        "lyrics-subjects": { title: "Subject / Occasion", heading: "Browse by Subject or Occasion", parameter: "subject", noun: "subjects", entries: lyricSubjects.map(entry => ({ id: entry.id, name: entry.name, lyrics: published.filter(lyric => lyric.subjectIds.includes(entry.id)) })) },
+        "lyrics-category": { title: "Categories", heading: "Browse by Category", parameter: "category", noun: "categories", entries: buildEntries(lyricCategories, lyric => lyric.categoryIds) },
+        "lyrics-artists": { title: "Naat-Khwaan / Reciters", heading: "Browse by Reciter", parameter: "artist", noun: "reciters", entries: buildEntries(Array.from(new Set(published.flatMap(lyric => lyric.reciters.map(name => name.trim()).filter(Boolean)))).map(name => ({ id: name, name })), lyric => lyric.reciters.map(name => name.trim()).filter(Boolean)) },
+        "lyrics-poets": { title: "Poets", heading: "Browse by Poet", parameter: "poet", noun: "poets", entries: buildEntries(Array.from(new Set(published.map(lyric => lyric.writer?.trim()).filter((name): name is string => Boolean(name)))).map(name => ({ id: name, name })), lyric => lyric.writer?.trim() ? [lyric.writer.trim()] : []) },
+        "lyrics-books": { title: "Books", heading: "Browse by Source", parameter: "book", noun: "books", entries: buildEntries(books.map(book => ({ id: book.slug, name: book.name })), lyric => lyric.bookId ? [lyric.bookId] : []) },
+        "lyrics-languages": { title: "Language", heading: "Browse by Language", parameter: "language", noun: "languages", entries: buildEntries(languageOptions.map(([id, name]) => ({ id, name })), lyric => lyric.languageVersions.map(version => normalizeLyricLanguageCode(version.code || version.label || version.script))) },
+        "lyrics-subjects": { title: "Subject / Occasion", heading: "Browse by Subject or Occasion", parameter: "subject", noun: "subjects", entries: buildEntries(subjects, lyric => lyric.subjectIds) },
     };
     const config = optionConfig[activeRoute];
     const selectedId = config ? getRouteQueryParam(config.parameter) : "";

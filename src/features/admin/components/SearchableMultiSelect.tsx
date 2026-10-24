@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { filterSearchableOptions, toggleSelectedValue } from "./searchableMultiSelectUtils.js";
 
 export type SearchableMultiSelectOption = {
     value: string;
@@ -43,9 +44,7 @@ export function SearchableMultiSelect({
         [options, value],
     );
     const filteredOptions = useMemo(() => {
-        const normalizedQuery = query.trim().toLocaleLowerCase();
-        return options.filter((option) => !normalizedQuery
-            || `${option.label} ${option.description || ""}`.toLocaleLowerCase().includes(normalizedQuery));
+        return filterSearchableOptions(options, query);
     }, [options, query]);
 
     useEffect(() => {
@@ -61,9 +60,7 @@ export function SearchableMultiSelect({
     }, [filteredOptions.length]);
 
     const toggleOption = (optionValue: string) => {
-        onChange(value.includes(optionValue)
-            ? value.filter((selectedValue) => selectedValue !== optionValue)
-            : [...value, optionValue]);
+        onChange(toggleSelectedValue(value, optionValue));
         setQuery("");
         setActiveIndex(0);
         setOpen(true);

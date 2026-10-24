@@ -65,6 +65,10 @@ All `/api/v1/admin/lyrics/**` routes use the existing JWT filter and require `AD
 
 Admin metadata requests accept the existing lyric identifiers and fields: title, slug, artist/writer IDs, reciter names, category/subject IDs, tags, book ID, image URL, featured state, and related media references. Unknown category or subject IDs are rejected. The server derives audit administrators from the authenticated JWT principal and ignores administrator IDs from request bodies.
 
+The authenticated admin endpoint `GET /api/v1/admin/lyrics/subjects` returns the subject catalog with each subject's stable string `id`, display `name`, and numeric `numericId` for combined create/update requests.
+
+The public endpoint `GET /api/v1/lyrics/subjects` returns distinct subject IDs and names associated with at least one published lyric.
+
 A language request contains `{ "document": <Tiptap JSON>, "changeNote": "optional" }`. The server enforces the documented node, mark, font, color, size, alignment, paragraph spacing, document-size, text-size, and non-empty-content rules before storage. JSON is never treated as HTML. The request body limit for lyric admin writes is 512 KiB; each document is limited to 256 KiB.
 
 The metadata create/update routes also accept the combined HTML request contract:

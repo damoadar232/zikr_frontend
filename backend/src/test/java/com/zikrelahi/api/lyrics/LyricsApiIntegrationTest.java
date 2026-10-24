@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.hamcrest.Matchers.is;
@@ -95,6 +96,75 @@ class LyricsApiIntegrationTest {
         token = tokenProvider.generateAccessToken(admin.getEmail(), admin.getRole().name(), admin.getId());
     }
 
+    @Test
+    void adminSubjectCatalogReturnsStableIdsAndNumericMappings() throws Exception {
+        String response = mockMvc.perform(get("/api/v1/admin/lyrics/subjects")
+                .header("Authorization", bearer()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        JsonNode subjects = objectMapper.readTree(response).path("data");
+        assertEquals(36, subjects.size());
+        JsonNode safar = findSubject(subjects, "safar-e-madina");
+        assertEquals("Safar-e-Madina", safar.path("name").asText());
+        assertTrue(safar.path("numericId").asLong() > 0);
+        assertEquals(1, countSubjects(subjects, "karbala"));
+        assertEquals(1, countSubjects(subjects, "ramadan"));
+        assertEquals(1, countSubjects(subjects, "ramzan"));
+        assertEquals(1, countSubjects(subjects, "eid"));
+        assertEquals(1, countSubjects(subjects, "eid-ul-fitr"));
+    }
+
+    @Test
+    void newSubjectCanBeAssignedToALyricThroughTheExistingCreateApi() throws Exception {
+        Map<String, Object> request = combinedRequest(null, null);
+        request.put("slug", prefix + "-new-subject");
+        request.put("subjectIds", List.of(numericMappingId(
+                "subject_numeric_mappings", "subject_key", "safar-e-madina")));
+
+        String response = mockMvc.perform(post("/api/v1/admin/lyrics")
+                .header("Authorization", bearer())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsBytes(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.subjectIds[0]", is("safar-e-madina")))
+                .andReturn().getResponse().getContentAsString();
+
+        long lyricId = objectMapper.readTree(response).at("/data/id").asLong();
+        assertEquals(1, jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM lyric_subject_assignments WHERE lyric_id = ? AND subject_id = ?",
+                Integer.class, lyricId, "safar-e-madina"));
+    }
+
+    @Test
+    void publicSubjectCatalogIncludesOnlySubjectsAssignedToPublishedLyrics() throws Exception {
+        String publishedReference = createLyric("Published subject", "poet-public-subject", "Reciter Public Subject");
+        mockMvc.perform(put("/api/v1/admin/lyrics/{reference}", publishedReference)
+                .header("Authorization", bearer())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsBytes(Map.of(
+                        "title", "Published subject " + prefix,
+                        "subjectIds", List.of("safar-e-madina")))))
+                .andExpect(status().isOk());
+        saveAndPublishRoman(publishedReference);
+
+        String draftReference = createLyric("Draft subject", "poet-draft-subject", "Reciter Draft Subject");
+        mockMvc.perform(put("/api/v1/admin/lyrics/{reference}", draftReference)
+                .header("Authorization", bearer())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsBytes(Map.of(
+                        "title", "Draft subject " + prefix,
+                        "subjectIds", List.of("ramzan")))))
+                .andExpect(status().isOk());
+
+        String response = mockMvc.perform(get("/api/v1/lyrics/subjects"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        JsonNode subjects = objectMapper.readTree(response).path("data");
+        assertEquals(1, countSubjects(subjects, "safar-e-madina"));
+        assertEquals(0, countSubjects(subjects, "ramzan"));
+    }
+
     @AfterEach
     void cleanUp() {
         List<Lyric> created = lyricRepository.findAll().stream()
@@ -134,6 +204,7 @@ class LyricsApiIntegrationTest {
                 .andExpect(jsonPath("$.data.reciters[0]", is(prefix + " Reciter")))
                 .andExpect(jsonPath("$.data.categoryIds[0]", is("naat-sharif")))
                 .andExpect(jsonPath("$.data.subjectIds[0]", is("madina")))
+                .andExpect(jsonPath("$.data.bookId", is("hadaiq-e-bakhshish")))
                 .andExpect(jsonPath("$.data.featured", is(true)))
                 .andExpect(jsonPath("$.data.mediaReferences[0].mediaType", is("AUDIO")))
                 .andReturn().getResponse().getContentAsString();
@@ -156,6 +227,119 @@ class LyricsApiIntegrationTest {
 
         mockMvc.perform(get("/api/v1/lyrics/{reference}", data.path("legacyId").asText()))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void publicBooksApiListsRequiredBooksWithUniqueNumericIds() throws Exception {
+        String response = mockMvc.perform(get("/api/v1/books"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        JsonNode books = objectMapper.readTree(response).path("data");
+        assertTrue(books.size() >= 17);
+        Set<Long> ids = new java.util.HashSet<>();
+        Set<String> slugs = new java.util.HashSet<>();
+        for (JsonNode book : books) {
+            assertTrue(book.path("id").isIntegralNumber());
+            assertTrue(book.path("name").isTextual());
+            assertTrue(book.path("slug").isTextual());
+            assertTrue(ids.add(book.path("id").asLong()));
+            slugs.add(book.path("slug").asText());
+        }
+        assertTrue(slugs.containsAll(List.of(
+                "hadaiq-e-bakhshish", "wasail-e-bakhshish", "safina-e-bakhshish",
+                "zauq-e-naat", "qabala-e-bakhshish", "wasail-e-firdous", "bayaz-e-pak",
+                "saman-e-bakhshish", "manaqib-e-attar", "guldasta-e-noorani",
+                "aarzoo-e-deedar-e-madina", "deewan-e-salik",
+                "kulliyat-e-naseer-gillani", "riaz-e-naeem",
+                "noor-e-sadaqat", "madina-roses", "salam-o-durood")));
+        JsonNode hadaiq = null;
+        for (JsonNode book : books) {
+            if ("hadaiq-e-bakhshish".equals(book.path("slug").asText())) {
+                hadaiq = book;
+                break;
+            }
+        }
+        assertTrue(hadaiq != null);
+        assertEquals("Hadaiq-e-Bakhshish", hadaiq.path("name").asText());
+        assertEquals("Imam Ahmed Raza Khan", hadaiq.path("author").asText());
+    }
+
+    @Test
+    void lyricBookSelectionPersistsAcrossCreateAndEditAndRejectsUnknownReferences() throws Exception {
+        Map<String, Object> create = combinedRequest(null, null);
+        create.put("bookId", "noor-e-sadaqat");
+        String created = mockMvc.perform(post("/api/v1/admin/lyrics")
+                .header("Authorization", bearer()).contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsBytes(create)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.bookId", is("noor-e-sadaqat")))
+                .andReturn().getResponse().getContentAsString();
+        String reference = objectMapper.readTree(created).at("/data/legacyId").asText();
+
+        mockMvc.perform(put("/api/v1/admin/lyrics/{reference}", reference)
+                .header("Authorization", bearer()).contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsBytes(Map.of(
+                        "title", "Updated book " + prefix,
+                        "bookId", "wasail-e-bakhshish"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.bookId", is("wasail-e-bakhshish")));
+        mockMvc.perform(get("/api/v1/admin/lyrics/{reference}", reference)
+                .header("Authorization", bearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.bookId", is("wasail-e-bakhshish")));
+
+        Map<String, Object> invalid = combinedRequest(null, null);
+        invalid.put("slug", prefix + "-unknown-book");
+        invalid.put("bookId", "not-a-known-book");
+        mockMvc.perform(post("/api/v1/admin/lyrics")
+                .header("Authorization", bearer()).contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsBytes(invalid)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error", is("INVALID_PARAMETER")));
+    }
+
+    @Test
+    void combinedCategoryCreateEditAndPublicReadPreserveCanonicalAssociations() throws Exception {
+        Map<String, Object> create = combinedRequest(null, null);
+        create.put("categoryIds", List.of(
+                numericMappingId("category_numeric_mappings", "category_key", "dua"),
+                numericMappingId("category_numeric_mappings", "category_key", "sufi-kalam")));
+        String created = mockMvc.perform(post("/api/v1/admin/lyrics")
+                .header("Authorization", bearer())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsBytes(create)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String reference = objectMapper.readTree(created).at("/data/legacyId").asText();
+        assertEquals(List.of("dua", "sufi-kalam"), categoryIdsFromAdminRead(reference));
+
+        Map<String, Object> update = new HashMap<>();
+        update.put("title", "Updated categories " + prefix);
+        update.put("categoryIds", List.of(
+                numericMappingId("category_numeric_mappings", "category_key", "other-kalam"),
+                numericMappingId("category_numeric_mappings", "category_key", "tazmeen")));
+        mockMvc.perform(put("/api/v1/admin/lyrics/{reference}", reference)
+                .header("Authorization", bearer())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsBytes(update)))
+                .andExpect(status().isOk());
+        assertEquals(List.of("other-kalam", "tazmeen"), categoryIdsFromAdminRead(reference));
+
+        long lyricId = jdbcTemplate.queryForObject(
+                "SELECT id FROM lyrics WHERE legacy_id = ?", Long.class, reference);
+        assertEquals(List.of("other-kalam", "tazmeen"), jdbcTemplate.queryForList(
+                "SELECT category_id FROM lyric_category_assignments WHERE lyric_id = ? ORDER BY category_id",
+                String.class, lyricId));
+
+        mockMvc.perform(patch("/api/v1/admin/lyrics/{reference}/status", reference)
+                .header("Authorization", bearer())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(statusBody("PUBLISHED")))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/lyrics/{reference}", reference))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.categoryIds[0]", is("other-kalam")))
+                .andExpect(jsonPath("$.data.categoryIds[1]", is("tazmeen")));
     }
 
     @Test
@@ -360,7 +544,7 @@ class LyricsApiIntegrationTest {
                 .andExpect(jsonPath("$.data.writerId", org.hamcrest.Matchers.isA(Number.class)))
                 .andExpect(jsonPath("$.data.reciters[0]", is(prefix + " Partial Reciter")))
                 .andExpect(jsonPath("$.data.categoryIds[0]", is("naat-sharif")))
-                .andExpect(jsonPath("$.data.bookId", is("combined-book")))
+                .andExpect(jsonPath("$.data.bookId", is("hadaiq-e-bakhshish")))
                 .andExpect(jsonPath("$.data.featured", is(true)));
 
         Map<String, Object> staleUpdate = new HashMap<>(update);
@@ -713,6 +897,16 @@ class LyricsApiIntegrationTest {
         return data.path("legacyId").asText();
     }
 
+    private List<String> categoryIdsFromAdminRead(String reference) throws Exception {
+        String response = mockMvc.perform(get("/api/v1/admin/lyrics/{reference}", reference)
+                .header("Authorization", bearer()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        JsonNode categoryIds = objectMapper.readTree(response).at("/data/categoryIds");
+        return objectMapper.convertValue(categoryIds, objectMapper.getTypeFactory()
+                .constructCollectionType(List.class, String.class));
+    }
+
     private Map<String, Object> combinedRequest(String writerKey, String reciterKey) {
         Map<String, Object> request = new HashMap<>();
         request.put("title", "Combined " + prefix);
@@ -724,7 +918,7 @@ class LyricsApiIntegrationTest {
         request.put("subjectIds", List.of(numericMappingId(
                 "subject_numeric_mappings", "subject_key", "madina")));
         request.put("tags", List.of("combined-test"));
-        request.put("bookId", "combined-book");
+        request.put("bookId", "hadaiq-e-bakhshish");
         request.put("featured", true);
         request.put("mediaReferences", List.of(Map.of(
                 "mediaType", "AUDIO", "title", "Recitation", "url", "https://example.test/audio")));
@@ -749,6 +943,25 @@ class LyricsApiIntegrationTest {
     private long numericMappingId(String table, String keyColumn, String key) {
         return jdbcTemplate.queryForObject(
                 "SELECT id FROM " + table + " WHERE " + keyColumn + " = ?", Long.class, key);
+    }
+
+    private static int countSubjects(JsonNode subjects, String id) {
+        int matches = 0;
+        for (JsonNode subject : subjects) {
+            if (id.equals(subject.path("id").asText())) {
+                matches++;
+            }
+        }
+        return matches;
+    }
+
+    private static JsonNode findSubject(JsonNode subjects, String id) {
+        for (JsonNode subject : subjects) {
+            if (id.equals(subject.path("id").asText())) {
+                return subject;
+            }
+        }
+        throw new AssertionError("Subject not found: " + id);
     }
 
     private JsonNode findLanguage(JsonNode languageVersions, String languageCode) {

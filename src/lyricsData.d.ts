@@ -32,6 +32,7 @@ export type LyricRecord = {
 };
 
 export const lyricCategories: Array<{ id: string; name: string }>;
+export const lyricCategoryNumericIds: Record<string, number>;
 export const artists: Array<{ id: string; name: string; profile: string }>;
 export const poets: Array<{ id: string; name: string; profile: string }>;
 export const lyricBooks: Array<{ id: string; title: string; author: string; description: string; coverColor: string }>;

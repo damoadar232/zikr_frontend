@@ -47,6 +47,8 @@ The frontend currently supports language codes `ur`, `hi`, and `roman` and sends
 
 `artistId`, `artistIds`, and `writerId` use numeric `artists.id` values for newly created or updated lyric records. `reciters` and `writer` remain display strings. Historical string references are retained separately for compatibility and are not backfilled by this change. Related video URLs are validated by the server; only verified YouTube IDs should be embedded.
 
+Book choices in Admin Lyrics Management load from `GET /api/v1/books`. The response exposes each book's numeric catalog `id`, `name`, `author`, and stable `slug`; lyric requests continue to send the slug string as `bookId` for compatibility. Do not submit the numeric catalog ID in `bookId`.
+
 ## Portfolio Management API (Not Implemented)
 
 No Portfolio persistence or API client exists in this repository. Admin Portfolio Management therefore shows the missing-backend state instead of offering browser-only create/edit controls that could be mistaken for real server changes. Backend implementation is required before enabling management.

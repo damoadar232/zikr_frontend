@@ -20,6 +20,22 @@ test("admin list unwraps the PageSlice envelope and sends only supported filters
         }),
     });
 
+    test("admin subjects unwraps the subject catalog envelope", async () => {
+        const calls = [];
+        const subjects = [{ id: "safar-e-madina", name: "Safar-e-Madina", numericId: 9 }];
+        const api = createLyricsApi({
+            baseUrl: "https://api.test",
+            auth: createAuth(async (url, options) => {
+                calls.push({ url, options });
+                return response(200, { data: subjects });
+            }),
+        });
+
+        assert.deepEqual(await api.listAdminSubjects(), subjects);
+        assert.equal(calls[0].url, "/api/v1/admin/lyrics/subjects");
+        assert.equal(calls[0].options.method, "GET");
+    });
+
     const page = await api.listAdminLyrics({
         page: 0, size: 10, status: "DRAFT", query: "naat & zikr",
         categoryId: "naat-sharif", language: "hi", reciter: "Owais Raza",
@@ -357,4 +373,23 @@ test("conflicts remain distinguishable and do not rewrite submitted documents", 
 test("an unconfigured API URL fails rather than falling back to browser demo storage", async () => {
     const api = createLyricsApi({ baseUrl: "", auth: createAuth(async () => assert.fail("No request expected")) });
     await assert.rejects(api.listAdminLyrics(), /API URL is not configured/);
+});
+
+test("public subject catalog uses the public lyrics endpoint without admin authentication", async () => {
+    const calls = [];
+    const subjects = [{ id: "safar-e-madina", name: "Safar-e-Madina" }];
+    const api = createLyricsApi({
+        baseUrl: "https://api.test",
+        auth: {
+            authenticatedFetch: async () => assert.fail("public subject requests must not use admin authentication"),
+        },
+        fetchImpl: async (url, options) => {
+            calls.push({ url, options });
+            return response(200, { data: subjects });
+        },
+    });
+
+    assert.deepEqual(await api.listPublicSubjects(), subjects);
+    assert.equal(calls[0].url, "https://api.test/api/v1/lyrics/subjects");
+    assert.equal(calls[0].options.headers.Accept, "application/json");
 });

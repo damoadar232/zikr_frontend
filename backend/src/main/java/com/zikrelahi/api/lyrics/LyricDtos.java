@@ -184,6 +184,12 @@ public final class LyricDtos {
     public record MediaReferenceDto(String mediaType, String title, String url) {
     }
 
+    public record SubjectOptionDto(String id, String name, Long numericId) {
+    }
+
+    public record PublicSubjectDto(String id, String name) {
+    }
+
     public record PageSlice<T>(List<T> items, int page, int size, long totalElements, int totalPages) {
     }
 }

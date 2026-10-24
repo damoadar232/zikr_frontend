@@ -10,8 +10,35 @@ import {
     getLyricsByLanguage,
     normalizeLyricLanguageCode,
     getLyricsBySubject,
+    lyricCategories,
+    lyricCategoryNumericIds,
     lyrics,
 } from "./lyricsData.js";
+
+test("lyric categories use the required IDs, labels, order, and backend numeric mappings", () => {
+    assert.deepEqual(lyricCategories, [
+        { id: "hamd", name: "Hamd" },
+        { id: "dua", name: "Dua" },
+        { id: "naat-sharif", name: "Naat Sharif" },
+        { id: "manqabat", name: "Manqabat" },
+        { id: "sufi-kalam", name: "Sufi Kalam" },
+        { id: "durood-o-salam", name: "Durood-o-Salam" },
+        { id: "tazmeen", name: "Tazmeen" },
+        { id: "qawwali", name: "Qawwali" },
+        { id: "other-kalam", name: "Other Kalam" },
+    ]);
+    assert.deepEqual(lyricCategoryNumericIds, {
+        "durood-o-salam": 1,
+        hamd: 2,
+        manqabat: 3,
+        "naat-sharif": 4,
+        qawwali: 5,
+        "sufi-kalam": 6,
+        dua: 7,
+        "other-kalam": 8,
+        tazmeen: 9,
+    });
+});
 
 test("published lyrics retain newest-first order and title-only search works", () => {
     const published = getPublishedLyrics(lyrics);

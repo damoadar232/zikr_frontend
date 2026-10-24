@@ -1,5 +1,6 @@
 package com.zikrelahi.api.lyrics;
 
+import com.zikrelahi.api.books.BookService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -48,6 +49,7 @@ public class AdminLyricService {
     private final LyricDtoAssembler assembler;
     private final NumericLyricReferenceResolver numericReferenceResolver;
     private final ArtistRepository artistRepository;
+    private final BookService bookService;
     private final LyricArtistAssignmentRepository artistAssignmentRepository;
     private final ObjectMapper objectMapper;
     private final Validator validator;
@@ -61,6 +63,7 @@ public class AdminLyricService {
             LyricDtoAssembler assembler,
             NumericLyricReferenceResolver numericReferenceResolver,
             ArtistRepository artistRepository,
+            BookService bookService,
             LyricArtistAssignmentRepository artistAssignmentRepository,
             ObjectMapper objectMapper,
             Validator validator) {
@@ -73,9 +76,17 @@ public class AdminLyricService {
         this.assembler = assembler;
         this.numericReferenceResolver = numericReferenceResolver;
         this.artistRepository = artistRepository;
+        this.bookService = bookService;
         this.artistAssignmentRepository = artistAssignmentRepository;
         this.objectMapper = objectMapper;
         this.validator = validator;
+    }
+
+    @Transactional(readOnly = true)
+    public List<SubjectOptionDto> listSubjectOptions() {
+        return subjectRepository.findAllOptions().stream()
+                .map(subject -> new SubjectOptionDto(subject.getId(), subject.getName(), subject.getNumericId()))
+                .toList();
     }
 
     @Transactional
@@ -262,7 +273,9 @@ public class AdminLyricService {
             lyric.setTags(new LinkedHashSet<>(cleanStrings(request.tags())));
         }
         if (create || bookIdSupplied) {
-            lyric.setBookId(clean(request.bookId()));
+            String bookId = clean(request.bookId());
+            bookService.validateReference(bookId);
+            lyric.setBookId(bookId);
         }
         if (create || featuredSupplied) {
             lyric.setFeatured(Boolean.TRUE.equals(request.featured()));
@@ -588,7 +601,9 @@ public class AdminLyricService {
         String writerName = clean(request.writerName());
         lyric.setWriterName(writerName != null ? writerName
                 : writer == null ? null : artistDisplayName(writer.getId()));
-        lyric.setBookId(clean(request.bookId()));
+        String bookId = clean(request.bookId());
+        bookService.validateReference(bookId);
+        lyric.setBookId(bookId);
         lyric.setCoverImageUrl(clean(request.coverImageUrl()));
         lyric.setFeatured(Boolean.TRUE.equals(request.featured()));
         lyric.setTags(new LinkedHashSet<>(cleanStrings(request.tags())));

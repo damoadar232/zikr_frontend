@@ -1,14 +1,16 @@
 import { useEffect, useState, type FormEvent } from "react";
 import type { JSONContent } from "@tiptap/core";
 import { Icon } from "../../../components/ui";
-import { lyricCategories, lyricBooks, lyricSubjects } from "../../../lyricsData";
+import { lyricCategories, lyricCategoryNumericIds, lyricBooks } from "../../../lyricsData";
 import { LyricsEditor } from "./LyricsEditor";
 import { SearchableMultiSelect, type SearchableMultiSelectOption } from "./SearchableMultiSelect";
 import { LyricDocumentView } from "../../lyrics/components/LyricRichText";
 import { artistsApi } from "../../artists/services/artistsApiService.js";
 import type { ApiArtistOption, ApiArtistRoleCode } from "../../artists/services/artistsApiService.js";
+import { booksApi } from "../../books/services/booksApiService.js";
+import type { ApiBook } from "../../books/services/booksApiService.js";
 import { lyricsApi } from "../../lyrics/services/lyricsApiService.js";
-import type { ApiAdminLyric, ApiContentStatus, ApiLyricLanguage, ApiPage, CombinedLyricsCreateRequest, CombinedLyricsUpdateRequest, LyricsMetadataRequest } from "../../lyrics/services/lyricsApiService.js";
+import type { ApiAdminLyric, ApiContentStatus, ApiLyricLanguage, ApiLyricSubject, ApiPage, CombinedLyricsCreateRequest, CombinedLyricsUpdateRequest, LyricsMetadataRequest } from "../../lyrics/services/lyricsApiService.js";
 import { slugifyLyricsTitle } from "../../lyrics/utils/youtubeVideo.js";
 
 const pageSize = 20;
@@ -65,26 +67,6 @@ function artistLabel(artist: Pick<ApiArtistOption, "displayName" | "fullName">) 
 function numericOrLegacyArtistId(id: string): number | string {
     return /^[1-9]\d*$/.test(id) && Number.isSafeInteger(Number(id)) ? Number(id) : id;
 }
-
-const categoryNumericIds: Record<string, number> = {
-    hamd: 1,
-    "durood-o-salam": 2,
-    manqabat: 3,
-    "naat-sharif": 4,
-    qawwali: 5,
-    "sufi-kalam": 6,
-};
-
-const subjectNumericIds: Record<string, number> = {
-    eid: 1,
-    karbala: 2,
-    madina: 3,
-    mercy: 4,
-    namaz: 5,
-    prophet: 6,
-    ramadan: 7,
-    tawakkul: 8,
-};
 
 function numericReferenceIds(ids: string[], mapping: Record<string, number>, label: string): number[] {
     return ids.map((id) => {
@@ -187,6 +169,13 @@ export function AdminLyricsManagement() {
     const [documents, setDocuments] = useState<Record<string, JSONContent>>(() => docsForEditor());
     const [writerOptions, setWriterOptions] = useState<ApiArtistOption[]>([]);
     const [reciterOptions, setReciterOptions] = useState<ApiArtistOption[]>([]);
+    const [bookOptions, setBookOptions] = useState<ApiBook[]>([]);
+    const [bookOptionsLoading, setBookOptionsLoading] = useState(true);
+    const [bookOptionsError, setBookOptionsError] = useState("");
+    const [bookOptionsRequestId, setBookOptionsRequestId] = useState(0);
+    const [subjectCatalog, setSubjectCatalog] = useState<ApiLyricSubject[]>([]);
+    const [subjectOptionsLoading, setSubjectOptionsLoading] = useState(true);
+    const [subjectOptionsError, setSubjectOptionsError] = useState("");
     const [writerOptionsLoading, setWriterOptionsLoading] = useState(true);
     const [reciterOptionsLoading, setReciterOptionsLoading] = useState(true);
     const [writerOptionsError, setWriterOptionsError] = useState("");
@@ -223,6 +212,32 @@ export function AdminLyricsManagement() {
             .finally(() => { if (current) setReciterOptionsLoading(false); });
         return () => { current = false; };
     }, [reciterOptionsRequestId]);
+
+    useEffect(() => {
+        let current = true;
+        setBookOptionsLoading(true);
+        setBookOptionsError("");
+        void booksApi.listBooks()
+            .then((options) => { if (current) setBookOptions(options); })
+            .catch((loadError: unknown) => {
+                if (current) setBookOptionsError(loadError instanceof Error ? loadError.message : "Book options could not be loaded.");
+            })
+            .finally(() => { if (current) setBookOptionsLoading(false); });
+        return () => { current = false; };
+    }, [bookOptionsRequestId]);
+
+    useEffect(() => {
+        let current = true;
+        setSubjectOptionsLoading(true);
+        setSubjectOptionsError("");
+        void lyricsApi.listAdminSubjects()
+            .then((options) => { if (current) setSubjectCatalog(options); })
+            .catch((loadError: unknown) => {
+                if (current) setSubjectOptionsError(loadError instanceof Error ? loadError.message : "Subject options could not be loaded.");
+            })
+            .finally(() => { if (current) setSubjectOptionsLoading(false); });
+        return () => { current = false; };
+    }, []);
 
     useEffect(() => {
         const timer = window.setTimeout(() => setDebouncedWriterQuery(writerQuery.trim()), 300);
@@ -346,6 +361,10 @@ export function AdminLyricsManagement() {
             setError("Artist options could not be loaded. Retry the affected artist fields before saving.");
             return;
         }
+        if (subjectOptionsLoading || subjectOptionsError) {
+            setError(subjectOptionsError || "Wait for subject options to finish loading before saving.");
+            return;
+        }
         setSaving(true);
         setError("");
         setNotice("");
@@ -387,8 +406,10 @@ export function AdminLyricsManagement() {
                     writerId: form.writerId ? Number(form.writerId) : null,
                     reciterIds: numericArtistIds([...new Set(form.reciterIds)]),
                     artistId: form.reciterIds[0] ? Number(form.reciterIds[0]) : null,
-                    categoryIds: numericReferenceIds(form.categoryIds, categoryNumericIds, "category"),
-                    subjectIds: numericReferenceIds(form.subjectIds, subjectNumericIds, "subject"),
+                    categoryIds: numericReferenceIds(form.categoryIds, lyricCategoryNumericIds, "category"),
+                    subjectIds: numericReferenceIds(form.subjectIds,
+                        Object.fromEntries(subjectCatalog.map(({ id, numericId }) => [id, numericId])),
+                        "subject"),
                     tags: metadata.tags,
                     bookId: metadata.bookId,
                     featured: false,
@@ -414,10 +435,12 @@ export function AdminLyricsManagement() {
                         ? { reciterIds: numericArtistIds([...new Set(form.reciterIds)]) }
                         : {}),
                     ...(categoriesChanged
-                        ? { categoryIds: numericReferenceIds(form.categoryIds, categoryNumericIds, "category") }
+                        ? { categoryIds: numericReferenceIds(form.categoryIds, lyricCategoryNumericIds, "category") }
                         : {}),
                     ...(subjectsChanged
-                        ? { subjectIds: numericReferenceIds(form.subjectIds, subjectNumericIds, "subject") }
+                        ? { subjectIds: numericReferenceIds(form.subjectIds,
+                            Object.fromEntries(subjectCatalog.map(({ id, numericId }) => [id, numericId])),
+                            "subject") }
                         : {}),
                     ...(tagsChanged ? { tags } : {}),
                     ...(form.bookId !== (editing!.bookId || "") ? { bookId: form.bookId || null } : {}),
@@ -534,8 +557,8 @@ export function AdminLyricsManagement() {
             .map((id) => ({ value: id, label: "Previously assigned category" })),
     ];
     const subjectOptions: SearchableMultiSelectOption[] = [
-        ...lyricSubjects.map(({ id, name }) => ({ value: id, label: name })),
-        ...form.subjectIds.filter((id) => !lyricSubjects.some((subject) => subject.id === id))
+        ...subjectCatalog.map(({ id, name }) => ({ value: id, label: name })),
+        ...form.subjectIds.filter((id) => !subjectCatalog.some((subject) => subject.id === id))
             .map((id) => ({ value: id, label: "Previously assigned subject" })),
     ];
 
@@ -547,8 +570,13 @@ export function AdminLyricsManagement() {
     const categoryLabels = (viewing?.categoryIds || []).map((id) =>
         lyricCategories.find((category) => category.id === id)?.name || id);
     const subjectLabels = (viewing?.subjectIds || []).map((id) =>
-        lyricSubjects.find((subject) => subject.id === id)?.name || id);
-    const bookLabel = lyricBooks.find((book) => book.id === viewing?.bookId)?.title || viewing?.bookId;
+        subjectCatalog.find((subject) => subject.id === id)?.name || id);
+    const bookLabel = bookOptions.find((book) => book.slug === viewing?.bookId)?.name
+        || lyricBooks.find((book) => book.id === viewing?.bookId)?.title
+        || viewing?.bookId;
+    const missingBook = form.bookId && !bookOptions.some((book) => book.slug === form.bookId)
+        ? { slug: form.bookId, name: lyricBooks.find((book) => book.id === form.bookId)?.title || form.bookId, author: null }
+        : null;
 
     return <section className="admin-api-lyrics">
         <div className="admin-api-heading">
@@ -693,7 +721,17 @@ export function AdminLyricsManagement() {
                         />
                         <small>The same artist may also be selected as the writer.</small>
                     </div>
-                    <label className="field"><span>Book</span><select value={form.bookId} onChange={(event) => setForm((current) => ({ ...current, bookId: event.target.value }))}><option value="">No book selected</option>{lyricBooks.map((book) => <option key={book.id} value={book.id}>{book.title}</option>)}</select></label>
+                    <div className="field">
+                        <label htmlFor="lyrics-book-select">Book</label>
+                        <select id="lyrics-book-select" value={form.bookId} onChange={(event) => setForm((current) => ({ ...current, bookId: event.target.value }))} disabled={bookOptionsLoading}>
+                            <option value="">No book selected</option>
+                            {missingBook && <option value={missingBook.slug}>{missingBook.name}{missingBook.author ? ` — ${missingBook.author}` : " — previously assigned"}</option>}
+                            {bookOptions.map((book) => <option key={book.id} value={book.slug}>{book.name}{book.author ? ` — ${book.author}` : ""}</option>)}
+                        </select>
+                        {bookOptionsLoading && <small role="status">Loading books…</small>}
+                        {!bookOptionsLoading && !bookOptionsError && bookOptions.length === 0 && <small>No books are available.</small>}
+                        {bookOptionsError && <div className="lyrics-artist-error" role="alert"><span>Book options failed: {bookOptionsError}</span><button type="button" onClick={() => setBookOptionsRequestId((current) => current + 1)}>Retry books</button></div>}
+                    </div>
                     <label className="field"><span>Tags (comma-separated)</span><input value={form.tags} onChange={(event) => setForm((current) => ({ ...current, tags: event.target.value }))} /></label>
                     <SearchableMultiSelect
                         label="Categories"

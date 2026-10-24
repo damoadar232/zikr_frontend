@@ -7,6 +7,7 @@ import com.zikrelahi.api.lyrics.LyricDtos.AdminLyricDto;
 import com.zikrelahi.api.lyrics.LyricDtos.LanguageVersionRequest;
 import com.zikrelahi.api.lyrics.LyricDtos.PageSlice;
 import com.zikrelahi.api.lyrics.LyricDtos.RevisionDto;
+import com.zikrelahi.api.lyrics.LyricDtos.SubjectOptionDto;
 import com.zikrelahi.api.security.AdminUserDetails;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -56,6 +57,11 @@ public class AdminLyricController {
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String query) {
         return ResponseEntity.ok(ApiResponse.ok(lyricService.list(page, size, status, query)));
+    }
+
+    @GetMapping("/subjects")
+    public ResponseEntity<ApiResponse<List<SubjectOptionDto>>> listSubjects() {
+        return ResponseEntity.ok(ApiResponse.ok(lyricService.listSubjectOptions()));
     }
 
     @GetMapping("/{reference}")

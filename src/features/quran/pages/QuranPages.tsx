@@ -10,6 +10,9 @@ import { surahData, surahs } from "../data/surahMetadata";
 import { QURAN_BOOKMARKS_UPDATED_EVENT, readQuranBookmarks, writeQuranBookmarks } from "../services/quranBookmarks";
 import { useQuranSurahs } from "../hooks/useQuranSurahs";
 import { useQuranSurahAyahs } from "../hooks/useQuranSurahAyahs";
+import { getSurahLabel, useQuranJuzAyahs, useQuranJuzList } from "../hooks/useQuranJuz";
+import { hasApiUrl } from "../services/quranApiService";
+import { getJuzReaderRoute } from "../utils/quranBrowseUtils.js";
 
 type Route = string;
 const quranBrowseItems = [
@@ -128,14 +131,19 @@ export function SurahRead({ go, isLoggedIn, onRequireAuthentication }: { go: (r:
   const location = new URLSearchParams(window.location.hash.split("?")[1] || "");
   const requestedSurah = Number(location.get("surah")) || 1;
   const initialSurah = Math.min(surahData.length, Math.max(1, requestedSurah));
+  const requestedJuz = Number(location.get("juz"));
+  const initialJuz = Number.isInteger(requestedJuz) && requestedJuz >= 1 && requestedJuz <= 30
+    ? requestedJuz
+    : null;
   const [surahNumber, setSurahNumber] = useState(initialSurah);
+  const [juzNumber, setJuzNumber] = useState<number | null>(initialJuz);
   const [ayahNumber, setAyahNumber] = useState(() => {
     const chapter = surahData[initialSurah - 1];
     const requestedAyah = Number(location.get("ayah")) || 1;
     return Math.min(chapter[2], Math.max(1, requestedAyah));
   });
   const [selectedTranslation, setSelectedTranslation] = useState<TranslationLanguage>(() =>
-    translationResources.find((resource) => resource.languageCode === getRouteQueryParam("translation"))?.languageCode || "en",
+    translationResources.find((resource) => resource.languageCode !== "ta" && resource.languageCode === getRouteQueryParam("translation"))?.languageCode || "en",
   );
   useEffect(() => {
     const params = new URLSearchParams(window.location.hash.split("?")[1] || "");
@@ -170,10 +178,46 @@ export function SurahRead({ go, isLoggedIn, onRequireAuthentication }: { go: (r:
   const chapter = surahData[surahNumber - 1];
   const chapterNumber = surahNumber;
   const [arabicName, transliteratedName, ayahCount, revelation] = chapter;
-  const { chapterContent } = useQuranSurahAyahs(chapterNumber, selectedTranslation);
+  const {
+    chapterContent,
+    loading: chapterLoading,
+    error: chapterError,
+    retry: retryChapter,
+  } = useQuranSurahAyahs(chapterNumber, selectedTranslation, juzNumber === null);
+  const {
+    ayahs: juzAyahs,
+    loading: juzLoading,
+    error: juzError,
+    retry: retryJuz,
+    apiConfigured: juzApiConfigured,
+  } = useQuranJuzAyahs(juzNumber, selectedTranslation);
+  const { items: juzEntries } = useQuranJuzList();
+  const juzContentByReference = Object.fromEntries(juzAyahs.map((ayah) => [
+    `${ayah.surahNumber}:${ayah.ayahNumber}`,
+    {
+      arabic: ayah.arabicText,
+      translations: ayah.translation
+        ? { [ayah.translation.languageCode]: ayah.translation.text }
+        : {},
+    },
+  ]));
+  const readerAyahRows = juzNumber === null
+    ? hasApiUrl()
+      ? Object.keys(chapterContent).map(Number).sort((left, right) => left - right).map((number) => ({
+        surahNumber: chapterNumber,
+        ayahNumber: number,
+      }))
+      : Array.from({ length: ayahCount }, (_, index) => ({
+        surahNumber: chapterNumber,
+        ayahNumber: index + 1,
+      }))
+    : juzAyahs.map(({ surahNumber: rowSurah, ayahNumber: rowAyah }) => ({
+      surahNumber: rowSurah,
+      ayahNumber: rowAyah,
+    }));
   const filteredSurahs = surahData.map((item, index) => ({ item, number: index + 1 })).filter(({ item, number }) => `${number} ${item[0]} ${item[1]} ${surahMeanings[number - 1]}`.toLowerCase().includes(surahSearch.toLowerCase()));
-  const filteredTranslations = translationResources.filter(resource => `${resource.language} ${resource.name} ${resource.attribution}`.toLowerCase().includes(translationSearch.toLowerCase()));
-  const activeJuz = [...juzStarts].reverse().find(start => chapterNumber > start.surah || (chapterNumber === start.surah && ayahNumber >= start.ayah))?.juz || 1;
+  const filteredTranslations = translationResources.filter(resource => resource.languageCode !== "ta" && `${resource.language} ${resource.name} ${resource.attribution}`.toLowerCase().includes(translationSearch.toLowerCase()));
+  const activeJuz = juzNumber ?? ([...juzStarts].reverse().find(start => chapterNumber > start.surah || (chapterNumber === start.surah && ayahNumber >= start.ayah))?.juz || 1);
   const mappedPage = mushafPageStarts.find(start => start.surah === chapterNumber && start.ayah === ayahNumber)?.page;
 
   useEffect(() => {
@@ -211,10 +255,15 @@ export function SurahRead({ go, isLoggedIn, onRequireAuthentication }: { go: (r:
       const params = new URLSearchParams(window.location.hash.split("?")[1] || "");
       const nextSurah = Math.min(surahData.length, Math.max(1, Number(params.get("surah")) || 1));
       const nextAyah = Math.min(surahData[nextSurah - 1][2], Math.max(1, Number(params.get("ayah")) || 1));
+      const nextJuzValue = Number(params.get("juz"));
+      const nextJuz = Number.isInteger(nextJuzValue) && nextJuzValue >= 1 && nextJuzValue <= 30
+        ? nextJuzValue
+        : null;
+      setJuzNumber(nextJuz);
       const nextTranslation = params.get("translation");
       setSurahNumber(nextSurah);
       setAyahNumber(nextAyah);
-      setSelectedTranslation(translationResources.some((resource) => resource.languageCode === nextTranslation) ? nextTranslation as TranslationLanguage : "en");
+      setSelectedTranslation(translationResources.some((resource) => resource.languageCode !== "ta" && resource.languageCode === nextTranslation) ? nextTranslation as TranslationLanguage : "en");
       setHighlightedAyah(nextAyah);
       pendingNavigation.current = `${nextSurah}:${nextAyah}`;
       audioRef.current?.pause();
@@ -236,6 +285,7 @@ export function SurahRead({ go, isLoggedIn, onRequireAuthentication }: { go: (r:
   }, [navOpen, translationOpen]);
 
   const updateLocation = (nextSurah: number, nextAyah: number, replace = false) => {
+    setJuzNumber(null);
     const params = new URLSearchParams({ surah: String(nextSurah), ayah: String(nextAyah), translation: selectedTranslation });
     navigate(`/surah-read?${params.toString()}`, { replace });
   };
@@ -287,31 +337,33 @@ export function SurahRead({ go, isLoggedIn, onRequireAuthentication }: { go: (r:
       window.requestAnimationFrame(() => document.getElementById(`ayah-${nextSurah}-${nextAyah}`)?.scrollIntoView({ behavior: "smooth", block: "center" }));
     }
   };
-  const toggleBookmark = (reference: number) => {
+  const toggleBookmark = (reference: number, referenceSurah: number, referenceAyah: number) => {
     if (!isLoggedIn) {
-      onRequireAuthentication("bookmark-quran", "quran-ayah", `${chapterNumber}:${reference % 1000}`);
+      onRequireAuthentication("bookmark-quran", "quran-ayah", `${referenceSurah}:${referenceAyah}`);
       return;
     }
     setBookmarks(current => current.includes(reference) ? current.filter(item => item !== reference) : [...current, reference]);
   };
-  const ayahTextFor = (number: number) => {
-    const content = chapterContent[number];
+  const ayahTextFor = (number: number, referenceSurah = chapterNumber) => {
+    const content = juzNumber === null
+      ? chapterContent[number]
+      : juzContentByReference[`${referenceSurah}:${number}`];
     const translation = content?.translations[selectedTranslation];
     return { content, translation };
   };
-  const copyAyah = async (number: number) => {
-    const { content, translation } = ayahTextFor(number);
+  const copyAyah = async (number: number, referenceSurah = chapterNumber) => {
+    const { content, translation } = ayahTextFor(number, referenceSurah);
     const text = [content?.arabic, translation].filter(Boolean).join("\n");
     if (!text) { setNotice("This Ayah has no text in the local mock dataset to copy."); return; }
-    try { await navigator.clipboard.writeText(text); setNotice(`${chapterNumber}:${number} copied.`); }
+    try { await navigator.clipboard.writeText(text); setNotice(`${referenceSurah}:${number} copied.`); }
     catch { setNotice("Clipboard access is unavailable in this browser."); }
   };
-  const shareAyah = async (number: number) => {
-    const { content, translation } = ayahTextFor(number);
-    const text = [content?.arabic, translation, `${chapterNumber}:${number}`].filter(Boolean).join("\n");
+  const shareAyah = async (number: number, referenceSurah = chapterNumber) => {
+    const { content, translation } = ayahTextFor(number, referenceSurah);
+    const text = [content?.arabic, translation, `${referenceSurah}:${number}`].filter(Boolean).join("\n");
     if (!text) { setNotice("This Ayah has no text in the local mock dataset to share."); return; }
     try {
-      if (navigator.share) await navigator.share({ title: `${chapterNumber}:${number} - ${transliteratedName}`, text });
+      if (navigator.share) await navigator.share({ title: `${referenceSurah}:${number} - ${surahData[referenceSurah - 1][1]}`, text });
       else { await navigator.clipboard.writeText(text); setNotice("Ayah copied for sharing."); }
     } catch { setNotice("Sharing was cancelled or is unavailable."); }
   };
@@ -377,8 +429,15 @@ export function SurahRead({ go, isLoggedIn, onRequireAuthentication }: { go: (r:
     handleAudioTimeUpdate(player);
   };
   const selectJuz = (juz: number) => {
-    const start = juzStarts.find(item => item.juz === juz);
-    if (start) navigateToAyah(start.surah, start.ayah);
+    const entry = juzEntries.find(item => item.number === juz);
+    if (!entry) return;
+    setJuzNumber(juz);
+    setSurahNumber(entry.startSurah);
+    setAyahNumber(entry.startAyah);
+    setHighlightedAyah(entry.startAyah);
+    setNavOpen(false);
+    stopAudio();
+    navigate(`/${getJuzReaderRoute(entry)}&translation=${selectedTranslation}`);
   };
   const selectPage = (page: number) => {
     const start = mushafPageStarts.find(item => item.page === page);
@@ -387,7 +446,7 @@ export function SurahRead({ go, isLoggedIn, onRequireAuthentication }: { go: (r:
 
   return <main className="quran-reading-page">
     <div className="quran-reader-top">
-      <button className="reader-current-surah" onClick={() => { setNavTab("Surah"); setNavOpen(true); }} aria-label={interfaceAttributeText("Open Surah navigation")}>{String(chapterNumber).padStart(2, "0")} · {transliteratedName}<span>⌄</span></button>
+      <button className="reader-current-surah" onClick={() => { setNavTab(juzNumber === null ? "Surah" : "Juz"); setNavOpen(true); }} aria-label={interfaceAttributeText(juzNumber === null ? "Open Surah navigation" : "Open Juz navigation")}>{juzNumber === null ? `${String(chapterNumber).padStart(2, "0")} · ${transliteratedName}` : `Juz ${juzNumber}`}<span>⌄</span></button>
       <div className="reader-location">{mappedPage ? `Page ${mappedPage}` : "Page mapping unavailable"}<i /><LocalizedText text={"Juz"} trailing=" " />{activeJuz} <LocalizedText text={"/ Hizb mapping unavailable"} /></div>
       <div className="reader-modes" role="group" aria-label={interfaceAttributeText("Reader mode")}><button className={mode === "verses" ? "active" : ""} onClick={() => setMode("verses")}><LocalizedText text={"Verse by Verse"} /></button><button className={mode === "reading" ? "active" : ""} onClick={() => setMode("reading")}><LocalizedText text={"Reading"} /></button></div>
     </div>
@@ -395,26 +454,34 @@ export function SurahRead({ go, isLoggedIn, onRequireAuthentication }: { go: (r:
       <section className="quran-reader-content">
         <div className="reader-toolbar-actions"><button className="reader-nav-open" onClick={() => { setNavTab("Surah"); setNavOpen(true); }}><Icon name="menu" size={17} /> <LocalizedText text={"Browse"} /></button><button className="reader-translation-open" onClick={() => setTranslationOpen(true)}><LocalizedText text={"Translation:"} trailing=" " />{translationResources.find(item => item.languageCode === selectedTranslation)?.language}<span>⌄</span></button></div>
         <section className="reader-chapter-card">
-          <strong className="reader-chapter-arabic" lang="ar" dir="rtl">{arabicName}</strong>
-          <div className="reader-chapter-copy"><span><LocalizedText text={"Surah"} trailing=" " />{chapterNumber}</span><h1>{transliteratedName} <em>{surahMeanings[chapterNumber - 1]}</em></h1><p>{revelation} • {ayahCount} <LocalizedText text={"Ayat • Local reader mock data"} /></p></div>
+          {juzNumber === null && <strong className="reader-chapter-arabic" lang="ar" dir="rtl">{arabicName}</strong>}
+          <div className="reader-chapter-copy">{juzNumber === null ? <><span><LocalizedText text={"Surah"} trailing=" " />{chapterNumber}</span><h1>{transliteratedName} <em>{surahMeanings[chapterNumber - 1]}</em></h1><p>{revelation} • {ayahCount} <LocalizedText text={hasApiUrl() ? "Ayat" : "Ayat • Local reader mock data"} /></p></> : <><span><LocalizedText text={"Juz / Para"} trailing=" " />{juzNumber}</span><h1><LocalizedText text={"Para"} trailing=" " />{juzNumber}</h1><p>{juzEntries.find((entry) => entry.number === juzNumber)?.startRef || "Boundary metadata unavailable"}{juzEntries.find((entry) => entry.number === juzNumber)?.endRef ? ` – ${juzEntries.find((entry) => entry.number === juzNumber)?.endRef}` : ""}</p></>}</div>
           <div className="reader-chapter-actions"><button onClick={() => startAudio()}><Icon name="play" size={15} /> <LocalizedText text={"Listen"} /></button><button onClick={() => setInfoOpen(open => !open)}><span aria-hidden="true">ⓘ</span> <LocalizedText text={"Info"} /></button><button className="translation-desktop" onClick={() => setTranslationOpen(true)}><LocalizedText text={"Translation:"} trailing=" " />{translationResources.find(item => item.languageCode === selectedTranslation)?.name} <span>⌄</span></button></div>
         </section>
-        {infoOpen && <div className="reader-info-panel"><b><LocalizedText text={"About this Surah"} /></b><span><LocalizedText text={"Chapter"} trailing=" " />{chapterNumber} <LocalizedText text={"in canonical order"} /></span><span>{revelation} <LocalizedText text={"revelation •"} trailing=" " />{ayahCount} <LocalizedText text={"Ayat"} /></span><span><LocalizedText text={"English meaning:"} trailing=" " />{surahMeanings[chapterNumber - 1]}</span></div>}
-        <div className="reader-data-note" role="note"><Icon name="book" size={16} /><p><LocalizedText text={"Ayah numbering follows chapter metadata. Local text is available only for 1:1; other slots are intentionally left without Quran text or translation."} /></p></div>
+        {infoOpen && <div className="reader-info-panel"><b><LocalizedText text={juzNumber === null ? "About this Surah" : "About this Juz"} /></b>{juzNumber === null ? <><span><LocalizedText text={"Chapter"} trailing=" " />{chapterNumber} <LocalizedText text={"in canonical order"} /></span><span>{revelation} <LocalizedText text={"revelation •"} trailing=" " />{ayahCount} <LocalizedText text={"Ayat"} /></span><span><LocalizedText text={"English meaning:"} trailing=" " />{surahMeanings[chapterNumber - 1]}</span></> : <span><LocalizedText text={"Juz verses follow canonical Surah and Ayah order."} /></span>}</div>}
+        {juzNumber !== null && juzLoading && <div className="reader-data-note" role="status"><Icon name="book" size={16} /><p><LocalizedText text={"Loading published Ayahs for this Juz…"} /></p></div>}
+        {juzNumber !== null && juzError && <div className="reader-data-note" role="alert"><Icon name="book" size={16} /><p><LocalizedText text={"Juz Ayahs could not be loaded."} /> {juzError} <button className="clear-filter-btn" onClick={retryJuz}><LocalizedText text={"Retry"} /></button></p></div>}
+        {juzNumber !== null && !juzApiConfigured && <div className="reader-data-note" role="note"><Icon name="book" size={16} /><p><LocalizedText text={"Connect the Quran API to read Juz ranges. Local Quran data is an incomplete prototype sample."} /></p></div>}
+        {juzNumber === null && chapterLoading && <div className="reader-data-note" role="status"><Icon name="book" size={16} /><p><LocalizedText text={"Loading published Ayahs…"} /></p></div>}
+        {juzNumber === null && chapterError && <div className="reader-data-note" role="alert"><Icon name="book" size={16} /><p><LocalizedText text={"Ayahs could not be loaded."} /> {chapterError} <button className="clear-filter-btn" onClick={retryChapter}><LocalizedText text={"Retry"} /></button></p></div>}
+        {juzNumber === null && <div className="reader-data-note" role="note"><Icon name="book" size={16} /><p><LocalizedText text={hasApiUrl() ? "Only published Ayahs returned by the Quran service are shown." : "Ayah numbering follows chapter metadata. Local text is only a prototype sample and is not a complete Quran."} /></p></div>}
         <div className={`reader-ayah-list ${mode === "reading" ? "reading-mode" : "verse-mode"}`}>
-          {Array.from({ length: ayahCount }, (_, index) => {
-            const number = index + 1;
-            const reference = chapterNumber * 1000 + number;
-            const { content, translation } = ayahTextFor(number);
+          {readerAyahRows.map(({ surahNumber: rowSurah, ayahNumber: number }, index) => {
+            const reference = rowSurah * 1000 + number;
+            const { content, translation } = ayahTextFor(number, rowSurah);
             const resource = translationResources.find(item => item.languageCode === selectedTranslation);
             const isBookmarked = bookmarks.includes(reference);
-            return <article id={`ayah-${chapterNumber}-${number}`} key={`${chapterNumber}:${number}`} className={`reader-ayah ${highlightedAyah === number ? "is-highlighted" : ""} ${!content ? "content-unavailable" : ""}`}>
-              <div className="reader-ayah-actions"><div><span className="ayah-reference">{chapterNumber}:{number}</span><button aria-label={`Play Ayah ${chapterNumber}:${number}`} onClick={() => startAudio(number)}>{audioPlaying && ayahNumber === number ? <span>Ⅱ</span> : <Icon name="play" size={17} />}</button><button aria-label={`${isBookmarked ? "Remove bookmark from" : "Bookmark"} Ayah ${chapterNumber}:${number}`} className={isBookmarked ? "bookmarked" : ""} onClick={() => toggleBookmark(reference)}><Icon name="heart" size={17} /></button></div><div><button aria-label={`Copy Ayah ${chapterNumber}:${number}`} onClick={() => void copyAyah(number)}><Icon name="copy" size={17} /></button><button aria-label={`Share Ayah ${chapterNumber}:${number}`} onClick={() => void shareAyah(number)}><Icon name="share" size={17} /></button></div></div>
+            const priorSurah = readerAyahRows[index - 1]?.surahNumber;
+            return <article id={`ayah-${rowSurah}-${number}`} key={`${rowSurah}:${number}`} className={`reader-ayah ${highlightedAyah === number && chapterNumber === rowSurah ? "is-highlighted" : ""} ${!content ? "content-unavailable" : ""}`}>
+              {juzNumber !== null && rowSurah !== priorSurah && <p className="reader-ayah-context"><LocalizedText text={"Surah"} trailing=" " />{rowSurah} · {getSurahLabel(rowSurah)}</p>}
+              <div className="reader-ayah-actions"><div><span className="ayah-reference">{rowSurah}:{number}</span><button aria-label={`Play Ayah ${rowSurah}:${number}`} onClick={() => startAudio(number, rowSurah)}>{audioPlaying && ayahNumber === number && chapterNumber === rowSurah ? <span>Ⅱ</span> : <Icon name="play" size={17} />}</button><button aria-label={`${isBookmarked ? "Remove bookmark from" : "Bookmark"} Ayah ${rowSurah}:${number}`} className={isBookmarked ? "bookmarked" : ""} onClick={() => toggleBookmark(reference, rowSurah, number)}><Icon name="heart" size={17} /></button></div><div><button aria-label={`Copy Ayah ${rowSurah}:${number}`} onClick={() => void copyAyah(number, rowSurah)}><Icon name="copy" size={17} /></button><button aria-label={`Share Ayah ${rowSurah}:${number}`} onClick={() => void shareAyah(number, rowSurah)}><Icon name="share" size={17} /></button></div></div>
               {content?.arabic ? <p className="reader-arabic" lang="ar" dir="rtl" translate="no">{content.arabic}</p> : <p className="ayah-unavailable"><LocalizedText text={"Quran text unavailable in the local mock data."} /></p>}
               {translation ? <p className={`reader-translation-text language-${selectedTranslation}`} lang={selectedTranslation} dir={selectedTranslation === "ur" ? "rtl" : "ltr"}>{translation}</p> : <p className="translation-unavailable">{content ? `No ${resource?.language || "selected language"} translation is available for this Ayah.` : "Translation unavailable for this Ayah in the local mock data."}</p>}
               {content && <small className="content-attribution"><LocalizedText text={"Existing prototype sample • translation attribution not recorded"} /></small>}
             </article>;
           })}
+          {juzNumber !== null && !juzLoading && !juzError && juzApiConfigured && readerAyahRows.length === 0 && <div className="empty"><Icon name="book" size={32} /><h3><LocalizedText text={"No published Ayahs are available for this Juz."} /></h3><p><LocalizedText text={"Quran content coverage is incomplete or no verses in this range are published yet."} /></p></div>}
+          {juzNumber === null && hasApiUrl() && !readerAyahRows.length && <div className="empty"><Icon name="book" size={32} /><h3><LocalizedText text={"No published Ayahs are available for this Surah."} /></h3></div>}
         </div>
         <nav className="reader-surah-pager" aria-label={interfaceAttributeText("Surah navigation")}><button disabled={chapterNumber === 1} onClick={() => selectSurah(chapterNumber - 1)}><LocalizedText text={"← Previous Surah"} /></button><button onClick={() => { setNavTab("Surah"); setNavOpen(true); }}><LocalizedText text={"All Surahs"} /></button><button disabled={chapterNumber === surahData.length} onClick={() => selectSurah(chapterNumber + 1)}><LocalizedText text={"Next Surah →"} /></button></nav>
       </section>
@@ -435,7 +502,7 @@ export function SurahRead({ go, isLoggedIn, onRequireAuthentication }: { go: (r:
           <div className="verse-ayah-list">{Array.from({ length: ayahCount }, (_, index) => index + 1).map(number => <button key={`${chapterNumber}:${number}`} className={ayahNumber === number ? "selected" : ""} aria-current={ayahNumber === number ? "true" : undefined} onClick={() => navigateToAyah(chapterNumber, number)}>{number}</button>)}</div>
         </section>
       </div>}
-      {navTab === "Juz" && <><p className="drawer-description"><LocalizedText text={"Select a Juz to navigate to its listed starting Ayah."} /></p><div className="juz-drawer-list">{juzStarts.map(start => <button key={start.juz} onClick={() => selectJuz(start.juz)} className={activeJuz === start.juz ? "selected" : ""}><span><LocalizedText text={"Juz"} trailing=" " />{start.juz}</span><small><LocalizedText text={"Starts at"} trailing=" " />{start.surah}:{start.ayah} · {surahData[start.surah - 1][1]}</small><Icon name="chevron" size={16} /></button>)}</div></>}
+      {navTab === "Juz" && <><p className="drawer-description"><LocalizedText text={"Select a Juz to read its published verses across Surah boundaries."} /></p><div className="juz-drawer-list">{juzEntries.map(entry => <button key={entry.number} onClick={() => selectJuz(entry.number)} className={activeJuz === entry.number ? "selected" : ""}><span><LocalizedText text={"Juz"} trailing=" " />{entry.number}</span><small><LocalizedText text={"Starts at"} trailing=" " />{entry.startRef} · {getSurahLabel(entry.startSurah)}</small><Icon name="chevron" size={16} /></button>)}</div>{!juzEntries.length && <p className="drawer-empty"><LocalizedText text={"No Juz metadata is available."} /></p>}</>}
       {navTab === "Page" && <div className="page-navigation"><h3><LocalizedText text={"Madani Mushaf sample mapping"} /></h3><p><LocalizedText text={"Only two local page-start mappings are included. This is not a complete page index."} /></p>{mushafPageStarts.map(start => <button key={start.page} className={mappedPage === start.page ? "selected" : ""} onClick={() => selectPage(start.page)}><span><LocalizedText text={"Page"} trailing=" " />{start.page}</span><small><LocalizedText text={"Starts at"} trailing=" " />{start.surah}:{start.ayah} · {surahData[start.surah - 1][1]}</small><Icon name="chevron" size={16} /></button>)}</div>}
     </aside></div>}
 
@@ -482,19 +549,19 @@ export function SurahRead({ go, isLoggedIn, onRequireAuthentication }: { go: (r:
 
 export function ParaPage({ go }: { go: (r: Route) => void }) {
   const [search, setSearch] = useState("");
-  const paraEntries = Array.from({ length: 30 }, (_, index) => {
-    const number = index + 1;
-    const start = juzStarts.find((entry) => entry.juz === number) || { surah: 1, ayah: 1 };
-    const summary = surahData[start.surah - 1] || ["", "", 0, ""];
-    return { number, label: `Para ${number}`, surahName: summary[1] || "Al-Fatihah", arabicName: summary[0] || "الفاتحة", startSurah: start.surah, startAyah: start.ayah };
-  });
+  const { items, loading, error, retry, apiConfigured } = useQuranJuzList();
+  const paraEntries = items.map((item) => ({
+    ...item,
+    label: `Para ${item.number}`,
+    surahName: getSurahLabel(item.startSurah),
+  }));
   const shown = filterQuranParas(paraEntries, search);
   const handleBrowseSelect = (item: (typeof quranBrowseItems)[number]) => {
     setSearch("");
     go(quranBrowseMap[item]);
   };
 
-  return <main><DirectoryHeader go={go} title={interfaceAttributeText("Para Directory")} text="Browse the Holy Quran through its 30 traditional Juz divisions." /><QuranSearchAndBrowse search={search} setSearch={setSearch} activeCategory="Para Directory" onSelectCategory={handleBrowseSelect} /><section className="section container"><div className="para-grid">{shown.map((item) => <button key={item.number} onClick={() => go(`surah-read?surah=${item.startSurah}&ayah=${item.startAyah}`)}><span>{String(item.number).padStart(2, "0")}</span><div><b>{item.label}</b><small><LocalizedText text={"Juz"} trailing=" " />{item.number} • {item.surahName}</small></div><Icon name="chevron" /></button>)}</div>{!shown.length && <div className="empty"><Icon name="search" size={32} /><h3><LocalizedText text={"No Para match that search."} /></h3><p><LocalizedText text={"Try a number, Juz name, or starting Surah reference."} /></p></div>}</section></main>;
+  return <main><DirectoryHeader go={go} title={interfaceAttributeText("Para Directory")} text="Browse the Holy Quran through its 30 traditional Juz divisions." /><QuranSearchAndBrowse search={search} setSearch={setSearch} activeCategory="Para Directory" onSelectCategory={handleBrowseSelect} /><section className="section container"><div className="directory-summary"><span>{loading ? <LocalizedText text={"Loading…"} /> : `${items.length} Para / Juz`}</span><small><LocalizedText text={"Listed in Quran order"} /></small></div>{error && <div className="empty" role="alert"><h3><LocalizedText text={"Juz could not be loaded."} /></h3><p>{error}</p><button className="btn btn-primary" onClick={retry}><LocalizedText text={"Retry"} /></button></div>}{!error && <><div className="para-grid">{shown.map((item) => <button key={item.number} onClick={() => go(getJuzReaderRoute(item))}><span>{String(item.number).padStart(2, "0")}</span><div><b>{item.label}</b><small><LocalizedText text={"Juz"} trailing=" " />{item.number} • {item.surahName} • {item.startRef}</small></div>{item.arabicName && <strong lang="ar" dir="rtl">{item.arabicName}</strong>}<Icon name="chevron" /></button>)}</div>{!loading && !shown.length && <div className="empty"><Icon name="search" size={32} /><h3><LocalizedText text={search ? "No Para match that search." : "No Para are available."} /></h3><p>{apiConfigured ? <LocalizedText text={"No Juz metadata was returned by the Quran service."} /> : <LocalizedText text={"Connect the Quran service to load complete Juz boundaries and reading content."} />}</p></div>}</>}</section></main>;
 }
 
 export function QuranTopics({ go }: { go: (r: Route) => void }) {
@@ -517,8 +584,3 @@ export function QuranTopics({ go }: { go: (r: Route) => void }) {
 
   return <main><DirectoryHeader go={go} title="Quranic Topics & Quotes" text="Explore an editorial index designed to guide thoughtful study. Published content must use verified source text and attribution." /><QuranSearchAndBrowse search={search} setSearch={setSearch} activeCategory={selectedView as (typeof quranBrowseItems)[number]} onSelectCategory={handleBrowseSelect} /><section className="section container"><div className="topic-grid">{shown.map((x, i) => <button key={x}><span>0{i + 1}</span><b>{t(x)}</b><small><LocalizedText text={"Curated references"} /></small><Icon name="arrow" /></button>)}{!shown.length && <div className="empty"><Icon name="search" size={32} /><h3><LocalizedText text={"No Quran topic matches that search."} /></h3><p><LocalizedText text={"Try a different topic title or phrase."} /></p></div>}</div><div className="notice"><Icon name="book" /><div><b><LocalizedText text={"Respectful by design"} /></b><p><LocalizedText text={"Quranic quotations will only be displayed after verification against authoritative source data and translation attribution."} /></p></div></div></section></main>;
 }
-
-
-
-
-

@@ -1,11 +1,26 @@
 export const lyricCategories = [
-    { id: "naat-sharif", name: "Naat Sharif" },
     { id: "hamd", name: "Hamd" },
-    { id: "durood-o-salam", name: "Durood-o-Salam" },
-    { id: "sufi-kalam", name: "Sufi Kalam" },
+    { id: "dua", name: "Dua" },
+    { id: "naat-sharif", name: "Naat Sharif" },
     { id: "manqabat", name: "Manqabat" },
+    { id: "sufi-kalam", name: "Sufi Kalam" },
+    { id: "durood-o-salam", name: "Durood-o-Salam" },
+    { id: "tazmeen", name: "Tazmeen" },
     { id: "qawwali", name: "Qawwali" },
+    { id: "other-kalam", name: "Other Kalam" },
 ];
+
+export const lyricCategoryNumericIds = {
+    "durood-o-salam": 1,
+    hamd: 2,
+    manqabat: 3,
+    "naat-sharif": 4,
+    qawwali: 5,
+    "sufi-kalam": 6,
+    dua: 7,
+    "other-kalam": 8,
+    tazmeen: 9,
+};
 
 export const artists = [
     { id: "owais-raza-qadri", name: "Owais Raza Qadri", profile: "Renowned reciter of devotional naats and supplications." },

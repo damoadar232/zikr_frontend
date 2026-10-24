@@ -31,6 +31,7 @@ export interface UseQuranSurahAyahsResult {
   chapterContent: AyahContentMap;
   loading: boolean;
   error: string | null;
+  retry: () => void;
 }
 
 /**
@@ -55,6 +56,7 @@ function buildFallbackContent(
 export function useQuranSurahAyahs(
   chapterNumber: number,
   selectedTranslation: TranslationLanguage,
+  enabled = true,
 ): UseQuranSurahAyahsResult {
   // Always call useContentCollection — hooks must not be conditional.
   // In API mode this result is ignored.
@@ -63,9 +65,10 @@ export function useQuranSurahAyahs(
   const [apiContent, setApiContent] = useState<AyahContentMap>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
-    if (!hasApiUrl()) return; // fallback mode — no fetch needed
+    if (!hasApiUrl() || !enabled) return; // fallback mode or a different reader mode
 
     let cancelled = false;
     setLoading(true);
@@ -96,11 +99,11 @@ export function useQuranSurahAyahs(
     return () => {
       cancelled = true;
     };
-  }, [chapterNumber, selectedTranslation]);
+  }, [chapterNumber, selectedTranslation, enabled, retryCount]);
 
   const chapterContent: AyahContentMap = hasApiUrl()
     ? apiContent
     : buildFallbackContent(managedAyahs, chapterNumber);
 
-  return { chapterContent, loading, error };
+  return { chapterContent, loading, error, retry: () => setRetryCount((value) => value + 1) };
 }

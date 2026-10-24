@@ -36,8 +36,8 @@ class MySqlLyricMigrationTest {
                 "SELECT COUNT(*) FROM flyway_schema_history WHERE version = '9' AND success = TRUE", Integer.class));
         assertEquals(10, jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM flyway_schema_history WHERE version = '10' AND success = TRUE", Integer.class));
-        assertEquals(6, jdbcTemplate.queryForObject("SELECT COUNT(*) FROM lyric_categories", Integer.class));
-        assertEquals(8, jdbcTemplate.queryForObject("SELECT COUNT(*) FROM lyric_subjects", Integer.class));
+        assertEquals(9, jdbcTemplate.queryForObject("SELECT COUNT(*) FROM lyric_categories", Integer.class));
+        assertEquals(36, jdbcTemplate.queryForObject("SELECT COUNT(*) FROM lyric_subjects", Integer.class));
         assertEquals(0, jdbcTemplate.queryForObject("SELECT COUNT(*) FROM lyrics", Integer.class));
         assertEquals(3, jdbcTemplate.queryForObject("SELECT COUNT(*) FROM artists", Integer.class));
         assertEquals(8, jdbcTemplate.queryForObject("SELECT COUNT(*) FROM artist_roles", Integer.class));
@@ -77,6 +77,12 @@ class MySqlLyricMigrationTest {
         assertEquals(1, jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM flyway_schema_history WHERE version = '14' AND success = TRUE",
                 Integer.class));
+        assertEquals(1, jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM flyway_schema_history WHERE version = '15' AND success = TRUE",
+                Integer.class));
+        assertEquals(1, jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM flyway_schema_history WHERE version = '17' AND success = TRUE",
+                Integer.class));
         assertEquals(2, jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() " +
                         "AND table_name = 'lyrics' AND column_name IN ('artist_id', 'writer_id') " +
@@ -105,6 +111,12 @@ class MySqlLyricMigrationTest {
                 Integer.class));
         assertEquals(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM lyric_categories", Integer.class),
                 jdbcTemplate.queryForObject("SELECT COUNT(*) FROM category_numeric_mappings", Integer.class));
+        assertEquals(7L, jdbcTemplate.queryForObject(
+                "SELECT id FROM category_numeric_mappings WHERE category_key = 'dua'", Long.class));
+        assertEquals(8L, jdbcTemplate.queryForObject(
+                "SELECT id FROM category_numeric_mappings WHERE category_key = 'other-kalam'", Long.class));
+        assertEquals(9L, jdbcTemplate.queryForObject(
+                "SELECT id FROM category_numeric_mappings WHERE category_key = 'tazmeen'", Long.class));
         assertEquals(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM lyric_subjects", Integer.class),
                 jdbcTemplate.queryForObject("SELECT COUNT(*) FROM subject_numeric_mappings", Integer.class));
     }
