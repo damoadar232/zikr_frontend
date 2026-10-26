@@ -23,6 +23,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import jakarta.persistence.EntityManager;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.HashMap;
 import java.util.List;
@@ -703,6 +704,41 @@ class LyricsApiIntegrationTest {
                 .param("page", "0").param("size", "10").param("language", "roman"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.totalElements", is(0)));
+    }
+
+    @Test
+    void savesAndReloadsFormattedHindiTranslation() throws Exception {
+        String reference = createLyric("Formatted Hindi", "poet-formatted-hi", "Reciter Formatted Hi");
+        JsonNode document = objectMapper.readTree("""
+                {"type":"doc","content":[
+                  {"type":"paragraph","attrs":{"textAlign":"right","paragraphSpacing":"8px"},"content":[
+                    {"type":"text","text":"\u0928\u092e\u0938\u094d\u0924\u0947","marks":[
+                      {"type":"textStyle","attrs":{"color":"#FF0000","fontSize":"18px","fontFamily":"Noto Sans Devanagari"}},
+                      {"type":"bold"}
+                    ]},
+                    {"type":"hardBreak"},
+                    {"type":"text","text":"\u0926\u0941\u0928\u093f\u092f\u093e","marks":[{"type":"italic"},{"type":"underline"}]}
+                  ]}
+                ]}
+                """);
+        Map<String, Object> request = new HashMap<>();
+        request.put("document", document);
+
+        mockMvc.perform(put("/api/v1/admin/lyrics/{id}/languages/hi", reference)
+                .header("Authorization", bearer()).contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsBytes(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.languageVersions[0].document.content[0].attrs.paragraphSpacing", is("8px")))
+                .andExpect(jsonPath("$.data.languageVersions[0].document.content[0].content[0].marks[0].attrs.fontSize", is("18px")))
+                .andExpect(jsonPath("$.data.languageVersions[0].document.content[0].content[0].marks[0].attrs.color", is("#FF0000")));
+
+        String reloaded = mockMvc.perform(get("/api/v1/admin/lyrics/{id}", reference)
+                .header("Authorization", bearer()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+
+        assertEquals(document, objectMapper.readTree(reloaded)
+                .at("/data/languageVersions/0/document"));
     }
 
     @Test

@@ -50,9 +50,12 @@ export function createLyricsApi({ baseUrl = API_BASE_URL, auth = adminAuth, fetc
         const lyric = await loadLyricForEditing(reference);
         return lyric.languageVersions.find((version) => version.languageCode === languageCode) || null;
     };
-    const saveLanguageVersion = (reference, languageCode, document, expectedRowVersion, changeNote) => request(
-        `/api/v1/admin/lyrics/${encodeURIComponent(reference)}/languages/${encodeURIComponent(languageCode)}`,
-        { method: "PUT", body: { document: sanitizeLyricDocument(document), expectedRowVersion, changeNote } });
+    const saveLanguageVersion = async (reference, languageCode, document, expectedRowVersion, changeNote) => {
+        const normalizedDocument = sanitizeLyricDocument(document, { rejectInvalidColors: true });
+        return request(
+            `/api/v1/admin/lyrics/${encodeURIComponent(reference)}/languages/${encodeURIComponent(languageCode)}`,
+            { method: "PUT", body: { document: normalizedDocument, expectedRowVersion, changeNote } });
+    };
     const setLyricStatus = (reference, status) => request(
         `/api/v1/admin/lyrics/${encodeURIComponent(reference)}/status`, { method: "PATCH", body: { status } });
     const deleteLyric = (reference) => request(`/api/v1/admin/lyrics/${encodeURIComponent(reference)}`, { method: "DELETE" });

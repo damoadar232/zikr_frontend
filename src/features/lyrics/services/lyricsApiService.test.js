@@ -214,6 +214,111 @@ test("language save removes unsupported code marks while preserving lyric text a
     });
 });
 
+test("language save normalizes colors, strips hard-break marks, and preserves supported formatting", async () => {
+    const calls = [];
+    const api = createLyricsApi({
+        baseUrl: "https://api.test",
+        auth: createAuth(async (url, options) => {
+            calls.push({ url, options });
+            return response(200, { data: {} });
+        }),
+    });
+    const document = {
+        type: "doc",
+        content: [{
+            type: "paragraph",
+            attrs: { textAlign: "center", paragraphSpacing: "8px" },
+            content: [
+                {
+                    type: "text",
+                    text: "नमस्ते",
+                    marks: [
+                        { type: "bold" },
+                        { type: "textStyle", attrs: { color: "#F00", fontSize: "18px", fontFamily: "Noto Sans Devanagari" } },
+                    ],
+                },
+                { type: "hardBreak", marks: [{ type: "italic" }] },
+                { type: "text", text: "दुनिया", marks: [{ type: "textStyle", attrs: { color: "rgb(0, 128, 255)" } }] },
+            ],
+        }],
+    };
+
+    await api.saveLanguageVersion("18", "hi", document, 1);
+
+    const body = JSON.parse(calls[0].options.body);
+    assert.equal(body.expectedRowVersion, 1);
+    assert.deepEqual(body.document.content[0].attrs, { textAlign: "center", paragraphSpacing: "8px" });
+    assert.deepEqual(body.document.content[0].content, [
+        {
+            type: "text",
+            text: "नमस्ते",
+            marks: [
+                { type: "bold" },
+                { type: "textStyle", attrs: { color: "#FF0000", fontSize: "18px", fontFamily: "Noto Sans Devanagari" } },
+            ],
+        },
+        { type: "hardBreak" },
+        { type: "text", text: "दुनिया", marks: [{ type: "textStyle", attrs: { color: "#0080FF" } }] },
+    ]);
+});
+
+test("language save rejects invalid colors before sending the request", async () => {
+    let requestCount = 0;
+    const api = createLyricsApi({
+        baseUrl: "https://api.test",
+        auth: createAuth(async () => {
+            requestCount += 1;
+            return response(200, { data: {} });
+        }),
+    });
+
+    await assert.rejects(api.saveLanguageVersion("18", "hi", {
+        type: "doc",
+        content: [{
+            type: "paragraph",
+            content: [{
+                type: "text",
+                text: "नमस्ते",
+                marks: [{ type: "textStyle", attrs: { color: "not-a-color" } }],
+            }],
+        }],
+    }, 1), /Text color must be a six-digit hexadecimal color/);
+    assert.equal(requestCount, 0);
+});
+
+test("formatted Hindi translation survives an API save and reload", async () => {
+    const calls = [];
+    const savedDocument = {
+        type: "doc",
+        content: [{
+            type: "paragraph",
+            attrs: { textAlign: "right", paragraphSpacing: "8px" },
+            content: [{
+                type: "text",
+                text: "शुभ रात्रि",
+                marks: [{ type: "textStyle", attrs: { color: "#FF0000", fontSize: "18px" } }, { type: "bold" }],
+            }],
+        }],
+    };
+    const api = createLyricsApi({
+        baseUrl: "https://api.test",
+        auth: createAuth(async (url, options) => {
+            calls.push({ url, options });
+            if (options.method === "GET") {
+                return response(200, { data: { languageVersions: [{ languageCode: "hi", document: savedDocument, rowVersion: 2 }] } });
+            }
+            return response(200, { data: {} });
+        }),
+    });
+
+    await api.saveLanguageVersion("18", "hi", savedDocument, 1);
+    const reloaded = await api.loadLanguageVersion("18", "hi");
+
+    assert.deepEqual(reloaded.document, savedDocument);
+    assert.equal(reloaded.rowVersion, 2);
+    assert.deepEqual(calls.map(({ options }) => options.method), ["PUT", "GET"]);
+});
+
 test("public list loads every reported page and detail lookup uses the exact reference", async () => {
     const calls = [];
     const api = createLyricsApi({

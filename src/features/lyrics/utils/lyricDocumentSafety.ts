@@ -10,16 +10,37 @@ export const lyricFontFamilies = [
 const allowedFontFamilies = new Set<string>(lyricFontFamilies);
 const allowedFontSizes = new Set(["14px", "16px", "18px", "20px", "24px", "28px", "32px", "36px"]);
 const allowedParagraphSpacing = new Set(["8px", "16px", "24px", "32px"]);
+const allowedTextAlignments = new Set(["left", "center", "right", "justify"]);
 const allowedTextMarks = new Set(["bold", "italic", "underline", "strike", "textStyle", "highlight"]);
 
 function safeColor(value: unknown) {
-    return typeof value === "string"
-        && (/^#[\da-f]{3,8}$/i.test(value) || /^rgba?\([\d.%\s,]+\)$/i.test(value))
-        ? value
+    if (typeof value !== "string") return null;
+    const hex = /^#([\da-f]{3}|[\da-f]{6})$/i.exec(value);
+    if (hex) {
+        const digits = hex[1].length === 3
+            ? [...hex[1]].map((digit) => `${digit}${digit}`).join("")
+            : hex[1];
+        return `#${digits.toUpperCase()}`;
+    }
+
+    const rgb = /^rgba?\(\s*([\d.]+%?)\s*,\s*([\d.]+%?)\s*,\s*([\d.]+%?)(?:\s*,\s*([\d.]+%?))?\s*\)$/i.exec(value);
+    if (!rgb || (rgb[4] !== undefined && Number(rgb[4].replace("%", "")) !== (rgb[4].endsWith("%") ? 100 : 1))) {
+        return null;
+    }
+
+    const channels = rgb.slice(1, 4).map((channel) => {
+        const percentage = channel.endsWith("%");
+        const number = Number(channel.replace("%", ""));
+        const maximum = percentage ? 100 : 255;
+        if (!Number.isFinite(number) || number < 0 || number > maximum) return null;
+        return Math.round(percentage ? number * 255 / 100 : number).toString(16).padStart(2, "0");
+    });
+    return channels.every((channel): channel is string => channel !== null)
+        ? `#${channels.join("")}`.toUpperCase()
         : null;
 }
 
-function sanitizeAttributes(type: string, value: unknown) {
+function sanitizeAttributes(type: string, value: unknown, rejectInvalidColors: boolean) {
     if (!value || typeof value !== "object" || Array.isArray(value)) return value;
     const attributes = { ...(value as Record<string, unknown>) };
     if (type === "textStyle") {
@@ -27,33 +48,41 @@ function sanitizeAttributes(type: string, value: unknown) {
         if (!allowedFontSizes.has(String(attributes.fontSize))) delete attributes.fontSize;
         if (attributes.color !== undefined) {
             const color = safeColor(attributes.color);
-            if (color) attributes.color = color;
+            if (attributes.color === null) delete attributes.color;
+            else if (color) attributes.color = color;
+            else if (rejectInvalidColors) throw new Error("Text color must be a six-digit hexadecimal color.");
             else delete attributes.color;
         }
     } else if (type === "highlight" && attributes.color !== undefined) {
         const color = safeColor(attributes.color);
-        if (color) attributes.color = color;
+        if (attributes.color === null) delete attributes.color;
+        else if (color) attributes.color = color;
+        else if (rejectInvalidColors) throw new Error("Highlight color must be a six-digit hexadecimal color.");
         else delete attributes.color;
-    } else if (type === "paragraph" && !allowedParagraphSpacing.has(String(attributes.paragraphSpacing))) {
-        delete attributes.paragraphSpacing;
+    } else if (type === "paragraph") {
+        if (!allowedParagraphSpacing.has(String(attributes.paragraphSpacing))) delete attributes.paragraphSpacing;
+        if (!allowedTextAlignments.has(String(attributes.textAlign))) delete attributes.textAlign;
     }
     return attributes;
 }
 
-export function sanitizeLyricDocument(document: JSONContent): JSONContent {
+export function sanitizeLyricDocument(
+    document: JSONContent,
+    { rejectInvalidColors = false }: { rejectInvalidColors?: boolean } = {},
+): JSONContent {
     const sanitizeNode = (node: JSONContent): JSONContent => {
         const { marks: originalMarks, ...nodeWithoutMarks } = node;
-        const marks = originalMarks?.flatMap((mark) => {
+        const marks = node.type === "hardBreak" ? undefined : originalMarks?.flatMap((mark) => {
             if (!allowedTextMarks.has(mark.type)) return [];
             const attrs = mark.attrs
-                ? sanitizeAttributes(mark.type, mark.attrs) as Record<string, unknown>
+                ? sanitizeAttributes(mark.type, mark.attrs, rejectInvalidColors) as Record<string, unknown>
                 : undefined;
             if (mark.type === "textStyle" && (!attrs || Object.keys(attrs).length === 0)) return [];
             return [{ ...mark, ...(attrs ? { attrs } : {}) }];
         });
         return {
             ...nodeWithoutMarks,
-            ...(node.attrs ? { attrs: sanitizeAttributes(node.type || "", node.attrs) as Record<string, unknown> } : {}),
+            ...(node.attrs ? { attrs: sanitizeAttributes(node.type || "", node.attrs, rejectInvalidColors) as Record<string, unknown> } : {}),
             ...(marks?.length ? { marks } : {}),
             ...(node.content ? { content: node.content.map(sanitizeNode) } : {}),
         };
@@ -83,7 +112,7 @@ export function sanitizePastedLyricHTML(html: string) {
         if (backgroundColor) element.style.backgroundColor = backgroundColor;
         if (allowedFontFamilies.has(fontFamily)) element.style.fontFamily = fontFamily;
         if (allowedFontSizes.has(fontSize)) element.style.fontSize = fontSize;
-        if (["left", "center", "right", "justify"].includes(textAlign)) element.style.textAlign = textAlign;
+        if (allowedTextAlignments.has(textAlign)) element.style.textAlign = textAlign;
         if (allowedParagraphSpacing.has(marginBottom)) element.style.marginBottom = marginBottom;
     }
     return parsed.body.innerHTML;

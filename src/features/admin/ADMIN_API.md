@@ -1,6 +1,6 @@
 # Admin Content API Contract
 
-The frontend includes an authenticated Lyrics API client at `/api/v1/admin/lyrics`, but this repository contains no backend source. The client contract is not proof that those endpoints are deployed. Lyrics Management uses that client and shows API failures explicitly; Quran and Reciter demo views still use browser-local storage. Do not represent local demo changes as server-persisted.
+The frontend includes an authenticated Lyrics API client at `/api/v1/admin/lyrics`, and the Spring Boot implementation is in `backend/`. Local source and tests document the API contract, but do not prove that any particular deployment is available. Lyrics Management uses that client and shows API failures explicitly; Quran demo views still use browser-local storage. Do not represent local demo changes as server-persisted.
 
 ## Required Authorization
 
@@ -18,7 +18,7 @@ The API client expects authenticated requests and a response envelope with the r
 - `DELETE /api/v1/admin/lyrics/:id` deletes a record.
 - `GET /api/v1/lyrics` is the unauthenticated public list client.
 
-The frontend currently supports language codes `ur`, `hi`, and `roman` and sends structured Tiptap documents without converting them to HTML. The parent lyric status controls public visibility; saved translations are returned regardless of the legacy language-level status. The backend must preserve validated text color and other supported marks, enforce row-version conflicts, validate authorization on every admin request, and expose only parent-published lyrics publicly. Deployment, authorization, persistence, filter semantics, and color round-tripping are not verifiable from this frontend-only repository.
+The frontend currently supports language codes `ur`, `hi`, and `roman` and sends structured Tiptap documents without converting them to HTML. Before saving, supported shorthand hex and RGB colors are normalized to six-digit hex; invalid colors are rejected. Marks attached to `hardBreak` nodes are removed because the server accepts only the node's `type` field; marks on ordinary text nodes are preserved. The server validates documents recursively, including six-digit colors, font sizes, paragraph spacing, text alignment, and allowed marks, and rejects unknown fields. Metadata and language versions are saved independently, and a failed language save is reported even if metadata was already saved. The parent lyric status controls public visibility; saved translations are returned regardless of the legacy language-level status. Row-version conflicts are enforced by the backend.
 
 ### Lyrics record shape
 

@@ -50,8 +50,31 @@ class TiptapDocumentValidatorTest {
     }
 
     @Test
+    void preservesSixDigitColorsEighteenPixelFontAndEightPixelParagraphSpacing() throws Exception {
+        JsonNode document = objectMapper.readTree("""
+                {"type":"doc","content":[
+                  {"type":"paragraph","attrs":{"textAlign":"center","paragraphSpacing":"8px"},"content":[
+                    {"type":"text","text":"नमस्ते","marks":[
+                      {"type":"textStyle","attrs":{"color":"#FF0000","fontSize":"18px"}},
+                      {"type":"bold"}
+                    ]}
+                  ]}
+                ]}
+                """);
+
+        var validated = TiptapDocumentValidator.validate(document);
+
+        assertEquals("#FF0000", validated.document().at("/content/0/content/0/marks/0/attrs/color").asText());
+        assertEquals("18px", validated.document().at("/content/0/content/0/marks/0/attrs/fontSize").asText());
+        assertEquals("8px", validated.document().at("/content/0/attrs/paragraphSpacing").asText());
+    }
+
+    @Test
     void rejectsUnsupportedNodesMarksAttributesAndUnsafeMarkup() throws Exception {
         assertInvalid("{\"type\":\"doc\",\"content\":[{\"type\":\"image\"}]}");
+        assertInvalid("{\"type\":\"doc\",\"unexpected\":true,\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"word\"}]}]}");
+        assertInvalid(
+                "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"word\"},{\"type\":\"hardBreak\",\"marks\":[{\"type\":\"italic\"}]}]}]}");
         assertInvalid(
                 "{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"word\",\"marks\":[{\"type\":\"link\"}]}]}]}");
         assertInvalid(
