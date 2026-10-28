@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import type { JSONContent } from "@tiptap/core";
 import { Icon } from "../../../components/ui";
+import { getUserFacingError, notify } from "../../../app/notifications/toastStore.js";
 import { lyricCategories, lyricCategoryNumericIds, lyricBooks } from "../../../lyricsData";
 import { LyricsEditor } from "./LyricsEditor";
 import { SearchableMultiSelect, type SearchableMultiSelectOption } from "./SearchableMultiSelect";
@@ -157,7 +158,6 @@ export function AdminLyricsManagement() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
-    const [notice, setNotice] = useState("");
     const [editing, setEditing] = useState<ApiAdminLyric | null>(null);
     const [viewingId, setViewingId] = useState<number | null>(null);
     const [viewing, setViewing] = useState<ApiAdminLyric | null>(null);
@@ -294,14 +294,12 @@ export function AdminLyricsManagement() {
         setForm(formForRecord(undefined, writerOptions, reciterOptions));
         setDocuments(docsForEditor());
         setError("");
-        setNotice("");
     };
 
     const startEdit = async (summary: ApiAdminLyric) => {
         setViewingId(null);
         setViewing(null);
         setError("");
-        setNotice("");
         setLoading(true);
         try {
             const record = await lyricsApi.loadLyricForEditing(String(summary.id));
@@ -367,7 +365,6 @@ export function AdminLyricsManagement() {
         }
         setSaving(true);
         setError("");
-        setNotice("");
         let metadataSaved = false;
         try {
             const selectedWriter = writerOptions.find((artist) => String(artist.id) === form.writerId);
@@ -470,20 +467,21 @@ export function AdminLyricsManagement() {
                 setCreating(false);
                 setEditing(saved);
                 await refresh();
-                setError(
-                    `Metadata was saved for lyric ID ${reference}, but these translations failed: ${failedLanguages
-                        .map(({ code, reason }) => `${languageLabel(code)} (${reason})`)
-                        .join("; ")}. Save again to retry using this lyric ID.`,
-                );
+                const failures = failedLanguages
+                    .map(({ code, reason }) => `${languageLabel(code)} (${getUserFacingError(new Error(reason), "The translation could not be saved.")})`)
+                    .join("; ");
+                notify.warning(`Metadata was saved for lyric ID ${reference}, but these translations failed: ${failures}. Save again to retry.`);
                 return;
             }
-            setNotice("Lyrics saved to the authenticated API.");
+            notify.success(creating ? "Lyric created successfully." : "Lyric changes saved successfully.");
             setCreating(false);
             setEditing(null);
             await refresh();
         } catch (saveError) {
-            const reason = saveError instanceof Error ? saveError.message : "The lyric could not be saved.";
-            setError(metadataSaved ? `Metadata was saved, but one or more language versions failed: ${reason}` : reason);
+            const reason = getUserFacingError(saveError, "The lyric could not be saved.");
+            notify.error(metadataSaved
+                ? `Lyric metadata was saved, but one or more language versions failed: ${reason}`
+                : reason);
         } finally {
             setSaving(false);
         }
@@ -491,27 +489,27 @@ export function AdminLyricsManagement() {
 
     const toggleStatus = async (record: ApiAdminLyric) => {
         setError("");
-        setNotice("");
         try {
             await lyricsApi.setLyricStatus(record.id.toString(), record.status === "PUBLISHED" ? "DRAFT" : "PUBLISHED");
-            setNotice("Publication status updated by the API.");
+            notify.success(`“${record.title}” publication status was updated.`);
             await refresh();
         } catch (updateError) {
-            setError(updateError instanceof Error ? updateError.message : "Publication status could not be updated.");
+            const message = getUserFacingError(updateError, "Publication status could not be updated.");
+            notify.error(message);
         }
     };
 
     const deleteRecord = async (record: ApiAdminLyric) => {
         if (!window.confirm(`Delete “${record.title}” from the server? This action cannot be undone.`)) return;
         setError("");
-        setNotice("");
         try {
             await lyricsApi.deleteLyric(record.id.toString());
-            setNotice("Lyric deleted from the authenticated API.");
+            notify.success(`“${record.title}” was deleted.`);
             if (records.length === 1 && page > 0) setPage((current) => current - 1);
             else await refresh();
         } catch (deleteError) {
-            setError(deleteError instanceof Error ? deleteError.message : "The lyric could not be deleted.");
+            const message = getUserFacingError(deleteError, "The lyric could not be deleted.");
+            notify.error(message);
         }
     };
 
@@ -587,7 +585,6 @@ export function AdminLyricsManagement() {
             {!creating && !editing && viewingId === null && <button type="button" className="btn btn-primary" onClick={startCreate} disabled={artistOptionsLoading}><Icon name="pen" size={16} />Add Lyrics</button>}
             {!creating && !editing && viewingId !== null && <button type="button" className="btn btn-outline" onClick={closeDetails}>Back to lyrics</button>}
         </div>
-        {notice && <p className="admin-success" role="status">{notice}</p>}
         {error && <p className="admin-form-error" role="alert">{error}</p>}
 
         {viewingId !== null && !creating && !editing ? <section className="admin-lyric-details" aria-labelledby="admin-lyric-details-title">

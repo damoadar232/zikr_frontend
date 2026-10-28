@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { artistsApi } from "../../artists/services/artistsApiService.js";
 import type { ApiArtist, ApiArtistPage, ApiArtistRoleDto, ApiArtistStatus, CreateArtistRequest, UpdateArtistRequest } from "../../artists/services/artistsApiService.js";
 import { Icon } from "../../../components/ui";
+import { getUserFacingError, notify } from "../../../app/notifications/toastStore.js";
 
 const pageSize = 20;
 type ArtistFormFields = "fullName" | "roles";
@@ -49,8 +50,6 @@ export function AdminArtistsManagement() {
     const [formError, setFormError] = useState("");
     const [formLoading, setFormLoading] = useState(false);
     const [saving, setSaving] = useState(false);
-    const [notice, setNotice] = useState("");
-    const [actionError, setActionError] = useState("");
     const [pendingAction, setPendingAction] = useState<{ id: number; type: ArtistRowAction } | null>(null);
     const roleLabels = useMemo(() => new Map(roles.map(({ code, label }) => [code, label])), [roles]);
 
@@ -137,11 +136,9 @@ export function AdminArtistsManagement() {
         setForm(emptyForm);
         setFieldErrors({});
         setFormError("");
-        setNotice("");
         setFormOpen(true);
     };
     const startEdit = async (artist: ApiArtist) => {
-        setNotice("");
         setError("");
         setFormError("");
         setFieldErrors({});
@@ -171,7 +168,6 @@ export function AdminArtistsManagement() {
         if (!form.roles.length) nextFieldErrors.roles = "Select at least one role.";
         setFieldErrors(nextFieldErrors);
         setFormError("");
-        setNotice("");
         if (Object.keys(nextFieldErrors).length) return;
 
         const payload: CreateArtistRequest & UpdateArtistRequest = {
@@ -185,7 +181,7 @@ export function AdminArtistsManagement() {
         try {
             if (editingId) await artistsApi.updateArtist(editingId, payload);
             else await artistsApi.createArtist(payload);
-            setNotice(editingId ? "Artist updated successfully." : "Artist created successfully.");
+            notify.success(editingId ? "Artist updated successfully." : "Artist created successfully.");
             setFormOpen(false);
             setEditingId(null);
             setForm(emptyForm);
@@ -196,7 +192,8 @@ export function AdminArtistsManagement() {
             setError("");
             setListRequestId((current) => current + 1);
         } catch (saveError) {
-            setFormError(saveError instanceof Error ? saveError.message : "Artist could not be saved.");
+            const message = getUserFacingError(saveError, "Artist could not be saved.");
+            notify.error(message);
         } finally {
             setSaving(false);
         }
@@ -221,15 +218,14 @@ export function AdminArtistsManagement() {
         const actionLabel = nextStatus === "ACTIVE" ? "activate" : "deactivate";
         if (!window.confirm(`${actionLabel[0].toUpperCase()}${actionLabel.slice(1)} ${artist.fullName}?`)) return;
 
-        setNotice("");
-        setActionError("");
         setPendingAction({ id: artist.id, type: "status" });
         try {
             await artistsApi.updateArtistStatus(artist.id, nextStatus);
-            setNotice(`${artist.fullName} was ${nextStatus === "ACTIVE" ? "activated" : "deactivated"}.`);
+            notify.success(`${artist.fullName} was ${nextStatus === "ACTIVE" ? "activated" : "deactivated"}.`);
             refreshArtists();
         } catch (statusError) {
-            setActionError(statusError instanceof Error ? statusError.message : `Artist could not be ${actionLabel}d.`);
+            const message = getUserFacingError(statusError, `Artist could not be ${actionLabel}d.`);
+            notify.error(message);
         } finally {
             setPendingAction(null);
         }
@@ -237,18 +233,15 @@ export function AdminArtistsManagement() {
     const deleteArtist = async (artist: ApiArtist) => {
         if (!window.confirm(`Delete ${artist.fullName}? This cannot be undone. If the artist is referenced by lyrics, deletion will be blocked; deactivation is recommended instead.`)) return;
 
-        setNotice("");
-        setActionError("");
         setPendingAction({ id: artist.id, type: "delete" });
         try {
             await artistsApi.deleteArtist(artist.id);
-            setNotice(`${artist.fullName} was deleted.`);
+            notify.success(`${artist.fullName} was deleted.`);
             setPage(0);
             refreshArtists();
         } catch (deleteError) {
-            setActionError(deleteError instanceof Error
-                ? deleteError.message
-                : "Artist could not be deleted. If it is referenced by lyrics, deactivate it instead.");
+            const message = getUserFacingError(deleteError, "Artist could not be deleted. If it is referenced by lyrics, deactivate it instead.");
+            notify.error(message);
         } finally {
             setPendingAction(null);
         }
@@ -262,9 +255,6 @@ export function AdminArtistsManagement() {
                     <Icon name="pen" size={16} />Add Artist
                 </button>}
             </div>
-
-            {notice && <p className="admin-success" role="status">{notice}</p>}
-            {actionError && <p className="admin-form-error" role="alert">{actionError}</p>}
 
             {rolesError && (
                 <div className="admin-form-error" role="alert">
@@ -381,39 +371,44 @@ export function AdminArtistsManagement() {
             {!formOpen && !loading && !error && result && result.items.length > 0 && (
                 <>
                     <div className="admin-artists-table-wrap">
-                        <table className="admin-artists-table">
+                        <table className="admin-artists-table" aria-label="Artists">
                             <thead>
                                 <tr>
                                     <th scope="col">Full Name</th>
                                     <th scope="col">Display Name</th>
                                     <th scope="col">Roles</th>
                                     <th scope="col">Status</th>
-                                    {"updatedAt" in result.items[0] && <th scope="col">Updated At</th>}
+                                    <th scope="col">Updated At</th>
                                     <th scope="col">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {result.items.map((artist: ApiArtist) => (
                                     <tr key={artist.id}>
-                                        <td>{artist.fullName}</td>
-                                        <td>{artist.displayName || "—"}</td>
+                                        <th scope="row" className="admin-artist-full-name">{artist.fullName || "—"}</th>
+                                        <td>{artist.displayName?.trim() || "—"}</td>
                                         <td>
                                             <div className="admin-artist-role-list">
-                                                {artist.roles.map((role) => (
+                                                {artist.roles?.length ? artist.roles.map((role) => (
                                                     <span className="admin-artist-role" key={role}>{roleLabels.get(role) || role}</span>
-                                                ))}
+                                                )) : "—"}
                                             </div>
                                         </td>
-                                        <td><span className={`status ${artist.status.toLowerCase()}`}>{artist.status}</span></td>
-                                        {"updatedAt" in artist && <td>{formatUpdatedAt(artist.updatedAt)}</td>}
                                         <td>
-                                            <div className="admin-artist-actions">
-                                                <button type="button" className="admin-artist-edit" onClick={() => void startEdit(artist)} disabled={pendingAction !== null}>
+                                            {artist.status
+                                                ? <span className={`admin-artist-status admin-artist-status-${artist.status.toLowerCase()}`}>{artist.status}</span>
+                                                : "—"}
+                                        </td>
+                                        <td>{formatUpdatedAt(artist.updatedAt)}</td>
+                                        <td>
+                                            <div className="admin-artist-actions" role="group" aria-label={`Actions for ${artist.fullName}`}>
+                                                <button type="button" className="admin-artist-edit" aria-label={`Edit ${artist.fullName}`} onClick={() => void startEdit(artist)} disabled={pendingAction !== null}>
                                                     Edit
                                                 </button>
                                                 <button
                                                     type="button"
                                                     className="admin-artist-edit"
+                                                    aria-label={`${artist.status === "ACTIVE" ? "Deactivate" : "Activate"} ${artist.fullName}`}
                                                     onClick={() => void changeArtistStatus(artist)}
                                                     disabled={pendingAction !== null}
                                                 >
@@ -424,6 +419,7 @@ export function AdminArtistsManagement() {
                                                 <button
                                                     type="button"
                                                     className="admin-artist-edit"
+                                                    aria-label={`Delete ${artist.fullName}`}
                                                     onClick={() => void deleteArtist(artist)}
                                                     disabled={pendingAction !== null}
                                                 >

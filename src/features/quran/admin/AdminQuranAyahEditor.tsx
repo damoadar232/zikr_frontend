@@ -13,6 +13,8 @@ import {
 } from "../services/quranAdminManagement.js";
 import { listQuranTranslators } from "../services/quranAdminTranslators.js";
 import { QuranTranslatorManagement } from "./QuranTranslatorManagement";
+import { Icon } from "../../../components/ui";
+import { getUserFacingError, notify } from "../../../app/notifications/toastStore.js";
 
 const languages = [
     { code: "en", label: "English", dir: "ltr" },
@@ -70,7 +72,6 @@ export function AdminQuranAyahEditor({
     const [savingTranslation, setSavingTranslation] = useState(false);
     const [statusBusy, setStatusBusy] = useState<number | null>(null);
     const [error, setError] = useState("");
-    const [message, setMessage] = useState("");
     const [translatorManagerOpen, setTranslatorManagerOpen] = useState(false);
     const [loadAttempt, setLoadAttempt] = useState(0);
 
@@ -166,7 +167,6 @@ export function AdminQuranAyahEditor({
         }
         setSavingAyah(true);
         setError("");
-        setMessage("");
         try {
             const saved = await saveAyahRecord({
                 surahNumber,
@@ -175,7 +175,7 @@ export function AdminQuranAyahEditor({
                 status: ayahStatus,
                 editing: Boolean(ayah),
             });
-            setMessage(`Ayah ${surahNumber}:${number} saved. Manage its translations separately below.`);
+            notify.success(`Ayah ${surahNumber}:${number} saved.`);
             if (isNew) onNavigateAyah(saved.ayahNumber);
             else {
                 setAyah((current) => current ? { ...current, ...saved } : current);
@@ -184,7 +184,8 @@ export function AdminQuranAyahEditor({
                     : [...records, saved]);
             }
         } catch (saveError) {
-            setError(getErrorMessage(saveError));
+            const message = getUserFacingError(saveError, "The Ayah could not be saved.");
+            notify.error(message);
         } finally {
             setSavingAyah(false);
         }
@@ -213,7 +214,6 @@ export function AdminQuranAyahEditor({
         if (!ayah || savingTranslation || selectedTranslatorAlreadyUsed) return;
         setSavingTranslation(true);
         setError("");
-        setMessage("");
         try {
             const saved = await saveTranslationRecord({
                 surahNumber,
@@ -231,11 +231,12 @@ export function AdminQuranAyahEditor({
                     saved,
                 ],
             } : current);
-            setMessage(`${selectedLanguageInfo.label} translation saved as ${saved.status.toLowerCase()}.`);
+            notify.success(`${selectedLanguageInfo.label} translation saved as ${saved.status.toLowerCase()}.`);
             setTranslationFormOpen(false);
             setEditingTranslation(null);
         } catch (saveError) {
-            setError(getErrorMessage(saveError));
+            const message = getUserFacingError(saveError, "The translation could not be saved.");
+            notify.error(message);
         } finally {
             setSavingTranslation(false);
         }
@@ -245,7 +246,6 @@ export function AdminQuranAyahEditor({
         const nextStatus = translation.status === "PUBLISHED" ? "DRAFT" : "PUBLISHED";
         setStatusBusy(translation.translatorId);
         setError("");
-        setMessage("");
         try {
             const updated = await changeTranslationStatus(
                 surahNumber,
@@ -259,9 +259,10 @@ export function AdminQuranAyahEditor({
                 translations: current.translations.map((record) => record.translatorId === updated.translatorId
                     && record.languageCode === updated.languageCode ? updated : record),
             } : current);
-            setMessage(`${selectedLanguageInfo.label} translation is now ${updated.status.toLowerCase()}.`);
+            notify.success(`${selectedLanguageInfo.label} translation is now ${updated.status.toLowerCase()}.`);
         } catch (statusError) {
-            setError(getErrorMessage(statusError));
+            const message = getUserFacingError(statusError, "Translation status could not be updated.");
+            notify.error(message);
         } finally {
             setStatusBusy(null);
         }
@@ -280,8 +281,12 @@ export function AdminQuranAyahEditor({
 
     return (
         <section className="admin-quran-management admin-quran-surah-management admin-quran-ayah-detail">
+            <div className="admin-quran-back-row">
+                <button type="button" aria-label="Back to Surah" title="Back to Surah" onClick={onBack}>
+                    <Icon name="arrow" size={18} />
+                </button>
+            </div>
             <header className="admin-quran-detail-heading">
-                <button type="button" onClick={onBack}>← Back to Surah</button>
                 <div>
                     <small>{mode === "view" ? "AYAH DETAIL" : isNew ? "NEW AYAH" : "EDIT AYAH"}</small>
                     <h2>{surah.transliterated} · Ayah {ayahNumber || routeAyahNumber}</h2>
@@ -290,7 +295,6 @@ export function AdminQuranAyahEditor({
                 {ayah && <span className={`status ${ayahStatus.toLowerCase()}`}>{ayahStatus.toLowerCase()}</span>}
             </header>
 
-            {message && <p className="admin-success" role="status">{message}</p>}
             {error && <p className="admin-form-error" role="alert">{error}</p>}
 
             <section className="admin-quran-ayah-editor form-card" aria-labelledby="admin-ayah-editor-title">
@@ -371,7 +375,6 @@ export function AdminQuranAyahEditor({
                 onCreated={(created) => {
                     if (created.languageCode === selectedLanguage) setTranslators((current) => [...current.filter((item) => item.id !== created.id), created]);
                     setTranslatorManagerOpen(false);
-                    setMessage(`${created.name} is registered for ${created.languageCode.toUpperCase()}.`);
                 }}
             />}
         </section>

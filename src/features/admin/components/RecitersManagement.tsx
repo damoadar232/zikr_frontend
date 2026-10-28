@@ -5,6 +5,7 @@ import { lyrics as initialLyrics } from "../../../lyricsData";
 import { reciterProfiles, reciterRoles, type ReciterProfile, type ReciterRole } from "../../lyrics/data/reciterProfiles";
 import { getLyricReciterIds } from "../../lyrics/utils/lyricsPresentation";
 import { contentRepository } from "../services/contentRepository.js";
+import { getUserFacingError, notify } from "../../../app/notifications/toastStore.js";
 
 type Mode = "list" | "form";
 type Draft = Omit<ReciterProfile, "id">;
@@ -44,7 +45,6 @@ export function RecitersManagement({ onBack, onLogout, onNavigate }: { onBack: (
     const [statusFilter, setStatusFilter] = useState("all");
     const [page, setPage] = useState(0);
     const [error, setError] = useState("");
-    const [message, setMessage] = useState("");
     const pageSize = 10;
     const filtered = useMemo(() => profiles.filter((profile) =>
         profile.name.toLowerCase().includes(query.trim().toLowerCase())
@@ -61,7 +61,6 @@ export function RecitersManagement({ onBack, onLogout, onNavigate }: { onBack: (
         setDraft(emptyDraft);
         setSelected(null);
         setError("");
-        setMessage("");
         setMode("form");
     };
 
@@ -71,14 +70,12 @@ export function RecitersManagement({ onBack, onLogout, onNavigate }: { onBack: (
         setDraft({ ...emptyDraft, ...editable });
         setSelected(profile);
         setError("");
-        setMessage("");
         setMode("form");
     };
 
     const save = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         setError("");
-        setMessage("");
         const name = draft.name.trim();
         const biography = draft.biography.trim();
         const profileImage = draft.profileImage?.trim() || "";
@@ -115,22 +112,22 @@ export function RecitersManagement({ onBack, onLogout, onNavigate }: { onBack: (
             if (editingId) contentRepository.update("reciters", editingId, record, reciterProfiles);
             else contentRepository.create("reciters", record, reciterProfiles);
             setSelected(record);
-            setMessage("Reciter profile saved in browser demo storage.");
+            notify.success("Reciter profile saved in browser demo storage.");
             setMode("list");
         } catch (saveError) {
-            setError(saveError instanceof Error ? saveError.message : "The reciter profile could not be saved.");
+            notify.error(getUserFacingError(saveError, "The reciter profile could not be saved."));
         }
     };
 
     const deactivate = (profile: ReciterProfile) => {
         if (!window.confirm(`Deactivate ${profile.name}? Their profile and lyric associations will remain intact.`)) return;
+        setError("");
         try {
             contentRepository.update("reciters", profile.id, { status: "inactive" }, reciterProfiles);
             setSelected({ ...profile, status: "inactive" });
-            setMessage(`${profile.name} was deactivated. Existing lyric associations were preserved.`);
-            setError("");
+            notify.success(`${profile.name} was deactivated. Existing lyric associations were preserved.`);
         } catch (updateError) {
-            setError(updateError instanceof Error ? updateError.message : "The reciter could not be deactivated.");
+            notify.error(getUserFacingError(updateError, "The reciter could not be deactivated."));
         }
     };
 
@@ -161,7 +158,6 @@ export function RecitersManagement({ onBack, onLogout, onNavigate }: { onBack: (
                 {mode === "form" && <button type="button" className="btn btn-outline" onClick={() => setMode("list")}>Back to list</button>}
             </header>
             <div className="admin-demo-warning" role="note">Profiles are saved to browser demo storage only. They are not connected to a production API.</div>
-            {message && <p className="admin-success" role="status">{message}</p>}
             {error && <p className="admin-form-error" role="alert">{error}</p>}
 
             {mode === "list" && <>

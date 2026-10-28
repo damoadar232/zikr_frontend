@@ -1,22 +1,17 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
-import { quranAdminApi, QuranAdminApiError } from "../services/quranAdminApi.js";
-import { changeAyahStatus, loadSurahAyahs, type AdminAyah } from "../services/quranAdminManagement.js";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { quranAdminApi } from "../services/quranAdminApi.js";
+import { changeAyahStatus, loadSurahAyahs, saveAyahRecord, validateAyahRecord, type AdminAyah } from "../services/quranAdminManagement.js";
+import { Icon } from "../../../components/ui";
+import { getUserFacingError, notify } from "../../../app/notifications/toastStore.js";
 
 type Surah = {
     number: number;
     arabicName: string;
     transliterated: string;
     englishMeaning: string;
-    ayahCount: number;
+    ayahCount?: number;
     revelation: string;
     status: string;
-};
-
-type ImportReport = {
-    totalRows: number;
-    validRows: number;
-    errorCount: number;
-    errors?: Array<{ row: number; field: string; code: string; message: string }>;
 };
 
 function getErrorMessage(error: unknown) {
@@ -49,12 +44,16 @@ export function AdminQuranSurahManagement({
     const [ayahsLoading, setAyahsLoading] = useState(true);
     const [ayahsError, setAyahsError] = useState("");
     const [statusBusy, setStatusBusy] = useState<number | null>(null);
-    const [error, setError] = useState("");
-    const [message, setMessage] = useState("");
-    const [bulkJson, setBulkJson] = useState("");
-    const [bulkReport, setBulkReport] = useState<ImportReport | null>(null);
-    const [validatedJson, setValidatedJson] = useState("");
-    const [bulkBusy, setBulkBusy] = useState(false);
+    const [addAyahOpen, setAddAyahOpen] = useState(false);
+    const [newAyahNumber, setNewAyahNumber] = useState("");
+    const [newArabicText, setNewArabicText] = useState("");
+    const [addAyahSaving, setAddAyahSaving] = useState(false);
+    const [addAyahFieldErrors, setAddAyahFieldErrors] = useState<{ ayahNumber?: string; arabicText?: string }>({});
+    const addAyahButtonRef = useRef<HTMLButtonElement>(null);
+    const ayahNumberInputRef = useRef<HTMLInputElement>(null);
+    const addAyahDialogRef = useRef<HTMLDivElement>(null);
+    const addAyahSaveLock = useRef(false);
+    const addAyahBaseline = useRef({ ayahNumber: "", arabicText: "" });
     const listRequest = useRef(0);
 
     useEffect(() => {
@@ -105,96 +104,142 @@ export function AdminQuranSurahManagement({
     };
 
     const orderedAyahs = useMemo(() => ayahs.slice().sort((a, b) => a.ayahNumber - b.ayahNumber), [ayahs]);
-    const nextAyah = surah ? firstMissingAyah(orderedAyahs, surah.ayahCount) : null;
+    const nextAyah = surah
+        && typeof surah.ayahCount === "number"
+        && Number.isInteger(surah.ayahCount)
+        && surah.ayahCount > 0
+        ? firstMissingAyah(orderedAyahs, surah.ayahCount)
+        : null;
+
+    const openAddAyah = () => {
+        const startingAyahNumber = !ayahsLoading && !ayahsError && nextAyah !== null
+            ? String(nextAyah)
+            : "";
+        const initialErrors: typeof addAyahFieldErrors = {};
+        if (!surah || !Number.isInteger(surah.ayahCount) || (surah.ayahCount ?? 0) < 1) {
+            initialErrors.ayahNumber = "Canonical Ayah count is unavailable from Surah metadata; this Ayah cannot be saved safely.";
+        } else if (!ayahsLoading && !ayahsError && nextAyah === null) {
+            initialErrors.ayahNumber = `All ${surah.ayahCount} canonical Ayah numbers already exist in this Surah.`;
+        }
+        addAyahBaseline.current = { ayahNumber: startingAyahNumber, arabicText: "" };
+        setNewAyahNumber(startingAyahNumber);
+        setNewArabicText("");
+        setAddAyahFieldErrors(initialErrors);
+        setAddAyahOpen(true);
+    };
+
+    const closeAddAyah = () => {
+        if (addAyahSaveLock.current) return;
+        const hasUnsavedChanges = newAyahNumber !== addAyahBaseline.current.ayahNumber
+            || newArabicText !== addAyahBaseline.current.arabicText;
+        if (hasUnsavedChanges && !window.confirm("Discard your unsaved Ayah changes?")) return;
+        setAddAyahOpen(false);
+    };
+
+    const handleAddAyahKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+        if (event.key === "Escape") {
+            event.preventDefault();
+            closeAddAyah();
+            return;
+        }
+        if (event.key !== "Tab") return;
+        const focusable = addAyahDialogRef.current?.querySelectorAll<HTMLElement>(
+            "button:not([disabled]), input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])",
+        );
+        if (!focusable?.length) {
+            event.preventDefault();
+            return;
+        }
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+        }
+    };
+
+    const saveNewAyah = async (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        if (!surah || addAyahSaveLock.current) return;
+        const ayahNumber = Number(newAyahNumber);
+        addAyahSaveLock.current = true;
+        setAddAyahSaving(true);
+        setAddAyahFieldErrors({});
+        try {
+            const input = {
+                surahNumber,
+                ayahNumber,
+                ayahCount: surah.ayahCount,
+                arabicText: newArabicText,
+                existingAyahs: [],
+            };
+            const inputError = validateAyahRecord(input);
+            if (inputError) {
+                setAddAyahFieldErrors(inputError.includes("Arabic")
+                    ? { arabicText: inputError }
+                    : { ayahNumber: inputError });
+                return;
+            }
+
+            const currentAyahs = await quranAdminApi.listAyahs(surahNumber) as AdminAyah[];
+            const duplicateError = validateAyahRecord({ ...input, existingAyahs: currentAyahs });
+            if (duplicateError) {
+                setAddAyahFieldErrors({ ayahNumber: duplicateError });
+                return;
+            }
+
+            const saved = await saveAyahRecord({
+                surahNumber,
+                ayahNumber,
+                arabicText: newArabicText,
+                status: "DRAFT",
+                editing: false,
+            });
+            const savedAyah: AdminAyah = { ...saved, translations: saved.translations || [] };
+            setAyahs((current) => [
+                ...current.filter((ayah) => ayah.ayahNumber !== savedAyah.ayahNumber),
+                savedAyah,
+            ].sort((a, b) => a.ayahNumber - b.ayahNumber));
+            setAddAyahOpen(false);
+            notify.success(`Ayah ${surahNumber}:${ayahNumber} was created as a draft.`);
+            await refreshAyahs();
+        } catch (saveError) {
+            const message = getUserFacingError(saveError, "The Ayah could not be created.");
+            notify.error(message);
+        } finally {
+            addAyahSaveLock.current = false;
+            setAddAyahSaving(false);
+        }
+    };
+
+    useEffect(() => {
+        if (!addAyahOpen) return;
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
+        ayahNumberInputRef.current?.focus();
+        return () => {
+            document.body.style.overflow = previousOverflow;
+            addAyahButtonRef.current?.focus();
+        };
+    }, [addAyahOpen]);
 
     const updateAyahStatus = async (ayah: AdminAyah) => {
         const nextStatus = ayah.status === "PUBLISHED" ? "DRAFT" : "PUBLISHED";
         const action = nextStatus === "PUBLISHED" ? "publish" : "unpublish";
         if (!window.confirm(`${action === "publish" ? "Publish" : "Unpublish"} Ayah ${surahNumber}:${ayah.ayahNumber}?`)) return;
         setStatusBusy(ayah.ayahNumber);
-        setError("");
-        setMessage("");
         try {
             const updated = await changeAyahStatus(surahNumber, ayah.ayahNumber, nextStatus);
             setAyahs((current) => current.map((row) => row.ayahNumber === updated.ayahNumber ? { ...row, status: updated.status } : row));
-            setMessage(`Ayah ${surahNumber}:${ayah.ayahNumber} is now ${updated.status.toLowerCase()}.`);
+            notify.success(`Ayah ${surahNumber}:${ayah.ayahNumber} is now ${updated.status.toLowerCase()}.`);
         } catch (statusError) {
-            setError(getErrorMessage(statusError));
+            const message = getUserFacingError(statusError, "The Ayah status could not be updated.");
+            notify.error(message);
         } finally {
             setStatusBusy(null);
-        }
-    };
-
-    const handleImportFile = async (event: ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
-        try {
-            const value = await file.text();
-            setBulkJson(value);
-            setBulkReport(null);
-            setValidatedJson("");
-            setError("");
-        } catch {
-            setError("The selected JSON file could not be read.");
-        }
-    };
-
-    const validateImport = async () => {
-        setBulkReport(null);
-        setValidatedJson("");
-        setError("");
-        let payload: unknown;
-        try {
-            payload = JSON.parse(bulkJson);
-        } catch {
-            setError("Import must be valid JSON.");
-            return;
-        }
-        if (!payload || typeof payload !== "object" || !Array.isArray((payload as { rows?: unknown }).rows)) {
-            setError('JSON must have the shape {"rows":[...]} described in the import guide.');
-            return;
-        }
-        setBulkBusy(true);
-        try {
-            const report = await quranAdminApi.validateImport(payload as object) as ImportReport;
-            setBulkReport(report);
-            setValidatedJson(bulkJson);
-        } catch (validationError) {
-            if (validationError instanceof QuranAdminApiError && validationError.data && typeof validationError.data === "object") {
-                setBulkReport(validationError.data as ImportReport);
-                setValidatedJson(bulkJson);
-            } else {
-                setError(getErrorMessage(validationError));
-            }
-        } finally {
-            setBulkBusy(false);
-        }
-    };
-
-    const commitImport = async () => {
-        if (!bulkReport || bulkReport.errorCount !== 0 || validatedJson !== bulkJson) {
-            setError("Validate the unchanged import batch successfully before committing.");
-            return;
-        }
-        if (!window.confirm("Commit this append-only batch? Existing Ayah text and translations will not be replaced.")) return;
-        setBulkBusy(true);
-        setError("");
-        setMessage("");
-        try {
-            const summary = await quranAdminApi.commitImport(JSON.parse(bulkJson)) as { imported: number; translationsCreated: number };
-            await refreshAyahs();
-            setMessage(`Import committed: ${summary.imported} Ayahs and ${summary.translationsCreated} translations added. Existing content was preserved.`);
-            setBulkReport(null);
-            setValidatedJson("");
-            setBulkJson("");
-        } catch (commitError) {
-            const data = commitError instanceof QuranAdminApiError && commitError.data && typeof commitError.data === "object"
-                ? commitError.data as ImportReport
-                : null;
-            if (data?.errors) setBulkReport(data);
-            else setError(getErrorMessage(commitError));
-        } finally {
-            setBulkBusy(false);
         }
     };
 
@@ -207,27 +252,29 @@ export function AdminQuranSurahManagement({
 
     return (
         <section className="admin-quran-management admin-quran-surah-management">
+            <div className="admin-quran-back-row">
+                <button type="button" aria-label="Back to Surahs" title="Back to Surahs" onClick={() => onNavigate()}>
+                    <Icon name="arrow" size={18} />
+                </button>
+            </div>
             <header className="admin-quran-detail-heading">
-                <button type="button" onClick={() => onNavigate()}>← Back to Surahs</button>
                 <div>
                     <small>{mode === "view" ? "READ-ONLY SURAH VIEW" : "SURAH AYAH MANAGEMENT"}</small>
                     <h2>{surah.number}. {surah.transliterated} <span lang="ar" dir="rtl">{surah.arabicName}</span></h2>
-                    <p>{surah.englishMeaning}{surah.revelation ? ` · ${surah.revelation}` : ""} · {surah.ayahCount} Ayahs</p>
+                    <p>{surah.englishMeaning}{surah.revelation ? ` · ${surah.revelation}` : ""} · {Number.isInteger(surah.ayahCount) && (surah.ayahCount ?? 0) > 0 ? `${surah.ayahCount} Ayahs` : "canonical Ayah limit unavailable"}</p>
                 </div>
                 {mode === "view"
                     ? <button className="btn btn-primary" type="button" onClick={() => onNavigate(surahNumber, "edit")}>Edit Ayahs</button>
-                    : <button className="btn btn-primary" type="button" onClick={() => onOpenAyah("new", "edit")} disabled={ayahsLoading || Boolean(ayahsError) || !nextAyah}>Add Ayah</button>}
+                    : <button ref={addAyahButtonRef} className="btn btn-primary" type="button" onClick={openAddAyah}>Add Ayah</button>}
             </header>
 
-            {message && <p className="admin-success" role="status">{message}</p>}
-            {error && <p className="admin-form-error" role="alert">{error}</p>}
             {ayahsError && <div className="admin-quran-notice admin-form-error" role="alert"><span>{ayahsError}</span><button type="button" onClick={() => void refreshAyahs()}>Retry Ayahs</button></div>}
             {ayahsLoading
                 ? <p className="admin-quran-state" role="status" aria-busy="true">Loading Ayahs and saved translation counts…</p>
                 : !ayahsError && orderedAyahs.length === 0
                     ? <p className="admin-quran-state">No Ayah records exist for this Surah yet.</p>
-                    : !ayahsError && <section className="admin-quran-ayah-list-v2" aria-label={`Ayahs in ${surah.transliterated}`}>
-                        <div className="admin-quran-list-heading"><div><h3>Ayahs</h3><p>{orderedAyahs.length} records · canonical limit {surah.ayahCount}</p></div></div>
+                    : orderedAyahs.length > 0 && <section className="admin-quran-ayah-list-v2" aria-label={`Ayahs in ${surah.transliterated}`}>
+                        <div className="admin-quran-list-heading"><div><h3>Ayahs</h3><p>{orderedAyahs.length} records · {Number.isInteger(surah.ayahCount) && (surah.ayahCount ?? 0) > 0 ? `canonical limit ${surah.ayahCount}` : "canonical Ayah limit unavailable"}</p></div></div>
                         <div className="admin-quran-table-wrap">
                             <table className="admin-quran-table admin-quran-ayah-table">
                                 <thead><tr>
@@ -254,20 +301,95 @@ export function AdminQuranSurahManagement({
                         </div>
                     </section>}
 
-            {mode === "edit" && <details className="form-card admin-quran-import">
-                <summary>Bulk import JSON</summary>
-                <p className="form-help">Import preview validates the batch before commit. Import is append-only and never replaces existing Ayahs or translations.</p>
-                <label className="field"><span>Choose JSON file</span><input type="file" accept="application/json,.json" onChange={(event) => void handleImportFile(event)} /></label>
-                <label className="field"><span>Import payload: {"{"}rows: [...]{"}"}</span><textarea rows={9} value={bulkJson} onChange={(event) => { setBulkJson(event.target.value); setBulkReport(null); setValidatedJson(""); }} placeholder='{"rows":[{"surahNumber":2,"ayahNumber":1,"arabicText":"...","translationEn":"...","translatorIdEn":123}]}' /></label>
-                <div className="admin-form-actions">
-                    <button type="button" disabled={bulkBusy || !bulkJson.trim()} onClick={() => void validateImport()}>{bulkBusy ? "Validating…" : "Validate / preview"}</button>
-                    <button className="btn btn-primary" type="button" disabled={bulkBusy || !bulkReport || bulkReport.errorCount !== 0 || validatedJson !== bulkJson} onClick={() => void commitImport()}>Commit validated batch</button>
+            {addAyahOpen && <div
+                className="admin-quran-add-ayah-overlay"
+                role="presentation"
+                onMouseDown={(event) => {
+                    if (event.target === event.currentTarget) closeAddAyah();
+                }}
+            >
+                <div
+                    ref={addAyahDialogRef}
+                    className="admin-quran-add-ayah-dialog"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="admin-add-ayah-title"
+                    aria-describedby="admin-add-ayah-description"
+                    onKeyDown={handleAddAyahKeyDown}
+                >
+                    <header className="admin-quran-add-ayah-heading">
+                        <div>
+                            <small>AYAH CONTENT</small>
+                            <h2 id="admin-add-ayah-title">Add New Ayah</h2>
+                            <p id="admin-add-ayah-description">Create the Ayah first; translations can be managed separately.</p>
+                        </div>
+                        <button
+                            type="button"
+                            className="admin-quran-add-ayah-close"
+                            aria-label="Close Add New Ayah"
+                            onClick={closeAddAyah}
+                            disabled={addAyahSaving}
+                        >×</button>
+                    </header>
+                    <form className="admin-quran-add-ayah-form" onSubmit={(event) => void saveNewAyah(event)} noValidate>
+                        <label className="field">
+                            <span>Surah Number</span>
+                            <input type="number" value={surah.number} readOnly aria-readonly="true" />
+                        </label>
+                        <label className="field">
+                            <span>Ayah Number *</span>
+                            <input
+                                ref={ayahNumberInputRef}
+                                type="number"
+                                min="1"
+                                max={surah.ayahCount}
+                                step="1"
+                                required
+                                value={newAyahNumber}
+                                aria-invalid={Boolean(addAyahFieldErrors.ayahNumber)}
+                                aria-describedby={addAyahFieldErrors.ayahNumber ? "admin-add-ayah-number-error" : undefined}
+                                onChange={(event) => {
+                                    setNewAyahNumber(event.target.value);
+                                    setAddAyahFieldErrors((current) => ({
+                                        ...current,
+                                        ayahNumber: Number.isInteger(surah.ayahCount) && (surah.ayahCount ?? 0) > 0
+                                            ? undefined
+                                            : "Canonical Ayah count is unavailable from Surah metadata; this Ayah cannot be saved safely.",
+                                    }));
+                                }}
+                            />
+                            {addAyahFieldErrors.ayahNumber && <small id="admin-add-ayah-number-error" className="admin-quran-field-error" role="alert">{addAyahFieldErrors.ayahNumber}</small>}
+                        </label>
+                        <label className="field">
+                            <span>Arabic Text *</span>
+                            <textarea
+                                lang="ar"
+                                dir="rtl"
+                                rows={5}
+                                required
+                                value={newArabicText}
+                                aria-invalid={Boolean(addAyahFieldErrors.arabicText)}
+                                aria-describedby={addAyahFieldErrors.arabicText ? "admin-add-ayah-arabic-error" : undefined}
+                                onChange={(event) => {
+                                    setNewArabicText(event.target.value);
+                                    setAddAyahFieldErrors((current) => ({ ...current, arabicText: undefined }));
+                                }}
+                            />
+                            {addAyahFieldErrors.arabicText && <small id="admin-add-ayah-arabic-error" className="admin-quran-field-error" role="alert">{addAyahFieldErrors.arabicText}</small>}
+                        </label>
+                        <label className="field">
+                            <span>Initial Status</span>
+                            <input type="text" value="DRAFT" readOnly aria-readonly="true" />
+                        </label>
+                        <footer className="admin-quran-add-ayah-actions">
+                            <button type="button" onClick={closeAddAyah} disabled={addAyahSaving}>Cancel</button>
+                            <button className="btn btn-primary" type="submit" disabled={addAyahSaving}>
+                                {addAyahSaving ? "Saving…" : "Save Ayah"}
+                            </button>
+                        </footer>
+                    </form>
                 </div>
-                {bulkReport && <div role="status">
-                    <p>{bulkReport.validRows} valid of {bulkReport.totalRows} rows; {bulkReport.errorCount} errors.</p>
-                    {bulkReport.errors?.map((rowError, index) => <p className="admin-form-error" key={`${rowError.row}-${rowError.code}-${index}`}>Row {rowError.row}{rowError.field ? `, ${rowError.field}` : ""}: {rowError.message}</p>)}
-                </div>}
-            </details>}
+            </div>}
         </section>
     );
 }

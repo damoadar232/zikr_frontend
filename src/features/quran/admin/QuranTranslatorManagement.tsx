@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { createQuranTranslator, listQuranTranslators } from "../services/quranAdminTranslators.js";
 import type { AdminTranslator } from "../services/quranAdminManagement.js";
+import { getUserFacingError, notify } from "../../../app/notifications/toastStore.js";
 
 const languageOptions = [
     { code: "en", label: "English" },
@@ -26,7 +27,6 @@ export function QuranTranslatorManagement({
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
-    const [message, setMessage] = useState("");
     const [showForm, setShowForm] = useState(false);
     const [form, setForm] = useState({ name: "", sourceRef: "", license: "", licenseNotes: "" });
     const closeDialog = () => {
@@ -52,7 +52,6 @@ export function QuranTranslatorManagement({
         if (saving) return;
         setSaving(true);
         setError("");
-        setMessage("");
         try {
             const created = await createQuranTranslator({
                 ...form,
@@ -60,15 +59,17 @@ export function QuranTranslatorManagement({
             });
             setForm({ name: "", sourceRef: "", license: "", licenseNotes: "" });
             setShowForm(false);
-            setMessage(`${created.name} was added as a translator for ${languageOptions.find((item) => item.code === language)?.label}.`);
+            notify.success(`${created.name} was added as a translator.`);
             try {
                 setTranslators(await listQuranTranslators(language, { force: true }));
             } catch (refreshError) {
-                setError(`${created.name} was added, but the filtered list could not be refreshed: ${refreshError instanceof Error ? refreshError.message : "The request failed."}`);
+                setTranslators((current) => [...current.filter((item) => item.id !== created.id), created]);
+                notify.warning(`${created.name} was added, but the list could not be refreshed.`);
             }
             onCreated?.(created);
         } catch (createError) {
-            setError(createError instanceof Error ? createError.message : "The translator could not be added.");
+            const message = getUserFacingError(createError, "The translator could not be added.");
+            notify.error(message);
         } finally {
             setSaving(false);
         }
@@ -81,12 +82,11 @@ export function QuranTranslatorManagement({
                     <h3 id="admin-translators-title">Translator Management</h3>
                     <p>Register translation attribution using verified source and license information.</p>
                 </div>
-                <button type="button" className="btn btn-primary" disabled={saving} onClick={() => { setShowForm((open) => !open); setError(""); setMessage(""); }}>
+                <button type="button" className="btn btn-primary" disabled={saving} onClick={() => { setShowForm((open) => !open); setError(""); }}>
                     {showForm ? "Cancel" : "Add Translator"}
                 </button>
             </div>
 
-            {message && <p className="admin-success" role="status">{message}</p>}
             {error && <div className="admin-quran-notice admin-form-error" role="alert">
                 <span>{error}</span>
                 {!showForm && <button type="button" onClick={() => {

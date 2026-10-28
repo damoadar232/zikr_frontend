@@ -32,6 +32,7 @@ import { audioCategories, audioLibrary, filterAudioLibrary, getAudioById } from 
 import { ebookCategories, ebookLibrary, filterEbooks, getEbookById } from "./bookData";
 import { clearPendingAction, createPendingAction, readPendingAction, savePendingAction, safeReturnTo } from "./authActions.js";
 import { adminAuth } from "./features/auth/services/adminAuth.js";
+import { notify } from "./app/notifications/toastStore.js";
 import { FONT_SCALE_KEY, GLOBAL_LANGUAGE_KEY, THEME_KEY, readPreference, translateInterface } from "./interfacePreferences";
 import { lookupWordMeanings } from "./wordMeaningService";
 import { surahData } from "./features/quran/data/surahMetadata";
@@ -569,6 +570,7 @@ export default function App() {
     try { window.localStorage.removeItem("zikr-authenticated"); } catch { /* ignore */ }
     setIsLoggedIn(false);
     go("home");
+    notify.success("You have been signed out.");
   };
 
   const headerRoute = lyricsRoutePaths.includes(routePath) ? "lyrics" : routePath;

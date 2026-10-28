@@ -17,6 +17,7 @@ import { RecitersManagement } from "../components/RecitersManagement";
 import { AdminLyricsManagement } from "../components/AdminLyricsManagement";
 import { AdminArtistsManagement } from "../components/AdminArtistsManagement";
 import { reciterProfiles, type ReciterProfile } from "../../lyrics/data/reciterProfiles";
+import { getUserFacingError, notify } from "../../../app/notifications/toastStore.js";
 
 type ContentKind = "lyrics" | "quranAyahs";
 type PageMode = "dashboard" | "apiLyrics" | "list" | "form" | "detail";
@@ -103,7 +104,6 @@ export function AdminContentPage({ edit = false, quranSection = false, go, isLog
     const [draft, setDraft] = useState<any>(() => getLyricsDraft());
     const [query, setQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
-    const [message, setMessage] = useState("");
     const [error, setError] = useState("");
     const [isSaving, setIsSaving] = useState(false);
     const [showReciterManagement, setShowReciterManagement] = useState(false);
@@ -153,7 +153,6 @@ export function AdminContentPage({ edit = false, quranSection = false, go, isLog
         setQuery("");
         setStatusFilter("all");
         setSelectedId("");
-        setMessage("");
         setError("");
         setMode(nextKind === "lyrics" ? "apiLyrics" : "list");
     };
@@ -165,7 +164,6 @@ export function AdminContentPage({ edit = false, quranSection = false, go, isLog
         setDraft(nextDraft);
         draftBaseline.current = JSON.stringify(nextDraft);
         setError("");
-        setMessage("");
         setMode("form");
     };
 
@@ -175,7 +173,6 @@ export function AdminContentPage({ edit = false, quranSection = false, go, isLog
         setDraft(nextDraft);
         draftBaseline.current = JSON.stringify(nextDraft);
         setError("");
-        setMessage("");
         setMode("form");
     };
 
@@ -184,7 +181,6 @@ export function AdminContentPage({ edit = false, quranSection = false, go, isLog
     const handleSave = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         setError("");
-        setMessage("");
         setIsSaving(true);
         try {
             if (kind === "lyrics") {
@@ -202,8 +198,14 @@ export function AdminContentPage({ edit = false, quranSection = false, go, isLog
                     if (!text) return [];
                     return [{ ...existing, ...language, text, ...(isLyricDocument(document) ? { document } : {}) }];
                 });
-                if (!title) throw new Error("A lyrics title is required.");
-                if (!versions.length) throw new Error("Add the existing lyrics text in at least one language.");
+                if (!title) {
+                    setError("A lyrics title is required.");
+                    return;
+                }
+                if (!versions.length) {
+                    setError("Add the existing lyrics text in at least one language.");
+                    return;
+                }
                 const reciterIds = [...new Set((draft.reciterIds || []).filter((id: unknown): id is string => typeof id === "string" && reciterRecords.some((profile) => profile.id === id)))];
                 const reciters = [...new Set([
                     ...reciterIds.map((id) => reciterRecords.find((profile) => profile.id === id)?.name).filter(Boolean),
@@ -214,7 +216,10 @@ export function AdminContentPage({ edit = false, quranSection = false, go, isLog
                 const videoUrls = splitLines(String(draft.relatedVideoUrls || ""));
                 const existingUrls = (selectedRecord?.relatedVideos || []).map((video: any) => video.url);
                 const invalidVideo = videoUrls.find((url) => !getYouTubeVideoId(url) && !existingUrls.includes(url));
-                if (invalidVideo) throw new Error(`Use a valid HTTPS YouTube URL: ${invalidVideo}`);
+                if (invalidVideo) {
+                    setError(`Use a valid HTTPS YouTube URL: ${invalidVideo}`);
+                    return;
+                }
                 const relatedVideos = videoUrls.map((url) => selectedRecord?.relatedVideos?.find((video: any) => video.url === url) || { url });
                 const writerId = poets.find((poet) => poet.name.toLowerCase() === String(draft.writer || "").trim().toLowerCase())?.id || "";
                 const record: AdminRecord = {
@@ -246,34 +251,37 @@ export function AdminContentPage({ edit = false, quranSection = false, go, isLog
                 throw new Error("Quran content is managed through the authenticated Quran API.");
             }
             setMode("detail");
-            setMessage("Saved to browser demo storage. This does not publish to a server.");
+            notify.success("Saved to browser demo storage. This does not publish to a server.");
         } catch (saveError) {
-            setError(saveError instanceof Error ? saveError.message : "The record could not be saved.");
+            const message = getUserFacingError(saveError, "The record could not be saved.");
+            notify.error(message);
         } finally {
             setIsSaving(false);
         }
     };
 
     const togglePublished = (record: AdminRecord) => {
+        setError("");
         try {
             contentRepository.update(kind, record.id, { status: record.status === "published" ? "draft" : "published" }, records);
-            setMessage(record.status === "published" ? "Moved to draft in browser demo storage." : "Published in browser demo storage.");
-            setError("");
+            notify.success(record.status === "published" ? "Moved to draft in browser demo storage." : "Published in browser demo storage.");
         } catch (updateError) {
-            setError(updateError instanceof Error ? updateError.message : "The record could not be updated.");
+            const message = getUserFacingError(updateError, "The record could not be updated.");
+            notify.error(message);
         }
     };
 
     const deleteRecord = (record: AdminRecord) => {
         if (!window.confirm(`Delete ${kind === "lyrics" ? record.title : record.id}? This cannot be undone in this browser.`)) return;
+        setError("");
         try {
             contentRepository.remove(kind, record.id, records);
             setSelectedId("");
             setMode("list");
-            setMessage("Deleted from browser demo storage.");
-            setError("");
+            notify.success("Deleted from browser demo storage.");
         } catch (deleteError) {
-            setError(deleteError instanceof Error ? deleteError.message : "The record could not be deleted.");
+            const message = getUserFacingError(deleteError, "The record could not be deleted.");
+            notify.error(message);
         }
     };
 
@@ -305,7 +313,7 @@ export function AdminContentPage({ edit = false, quranSection = false, go, isLog
                     <button className={!quranSection && kind === "lyrics" && mode !== "dashboard" && !showReciterManagement && !showArtistManagement && !showPortfolioManagement ? "active" : ""} onClick={() => go("admin?section=lyrics")}><Icon name="pen" size={17} />Lyrics Management</button>
                     <button className={quranSection || !showReciterManagement && !showArtistManagement && !showPortfolioManagement && kind === "quranAyahs" && mode !== "dashboard" ? "active" : ""} onClick={() => { setShowPortfolioManagement(false); setShowReciterManagement(false); setShowArtistManagement(false); go("admin/quran"); }}><Icon name="book" size={17} />Quran Management</button>
                     <button className={!quranSection && showArtistManagement ? "active" : ""} onClick={() => go("admin?section=artists")}><Icon name="user" size={17} />Artist Management</button>
-                    <button className={!quranSection && showReciterManagement ? "active" : ""} onClick={() => go("admin?section=reciters")}><Icon name="user" size={17} />Legacy Reciters</button>
+                    {/* <button className={!quranSection && showReciterManagement ? "active" : ""} onClick={() => go("admin?section=reciters")}><Icon name="user" size={17} />Legacy Reciters</button> */}
                     <button className={!quranSection && showPortfolioManagement ? "active" : ""} onClick={() => go("admin?section=portfolio")}><Icon name="grid" size={17} />Portfolio Management</button>
                 </nav>
                 <button className="admin-signout" onClick={() => onLogout?.()}><Icon name="x" size={17} />Sign out</button>
@@ -313,7 +321,6 @@ export function AdminContentPage({ edit = false, quranSection = false, go, isLog
             <div className="admin-main">
                 <header><div><small>ADMINISTRATION</small><h1>{quranSection ? "Quran Management" : showArtistManagement ? "Artist Management" : showPortfolioManagement ? "Portfolio Management" : mode === "dashboard" ? "Content dashboard" : mode === "apiLyrics" ? "Lyrics Management" : `${kind === "lyrics" ? "Lyrics" : "Quran Ayah"} management`}</h1></div><span className="admin-demo-badge">{quranSection || (mode === "apiLyrics" && !showPortfolioManagement) || showArtistManagement || (kind === "quranAyahs" && mode !== "dashboard") ? "Authenticated API" : "Browser demo storage"}</span></header>
                 {mode !== "apiLyrics" && !quranSection && !showPortfolioManagement && !showArtistManagement && !(kind === "quranAyahs" && mode !== "dashboard") && <div className="admin-demo-warning" role="note">Changes in the legacy demo views persist in this browser only. They are not server records.</div>}
-                {message && <p className="admin-success" role="status">{message}</p>}
                 <ErrorMessage message={error} />
 
                 {mode === "apiLyrics" && !showPortfolioManagement && !showArtistManagement && <AdminLyricsManagement />}
@@ -329,22 +336,22 @@ export function AdminContentPage({ edit = false, quranSection = false, go, isLog
                             onBack={() => go(`admin/quran/${selectedSurahNumber}?mode=edit`)}
                             onNavigateAyah={(ayahNumber) => go(`admin/quran/${selectedSurahNumber}/ayah/${ayahNumber}`)}
                         />
-                    : <AdminQuranSurahManagement
-                        key={`quran-surah-${selectedSurahNumber}`}
-                        surahNumber={selectedSurahNumber}
-                        mode={quranMode}
-                        onNavigate={(number, nextMode) => go(number === undefined
-                            ? "admin/quran"
-                            : `admin/quran/${number}?mode=${nextMode || "edit"}`)}
-                        onOpenAyah={(ayahNumber, nextMode) => go(
-                            `admin/quran/${selectedSurahNumber}/ayah/${ayahNumber}${nextMode === "view" ? "?mode=view" : ""}`,
-                        )}
-                    />)}
+                        : <AdminQuranSurahManagement
+                            key={`quran-surah-${selectedSurahNumber}`}
+                            surahNumber={selectedSurahNumber}
+                            mode={quranMode}
+                            onNavigate={(number, nextMode) => go(number === undefined
+                                ? "admin/quran"
+                                : `admin/quran/${number}?mode=${nextMode || "edit"}`)}
+                            onOpenAyah={(ayahNumber, nextMode) => go(
+                                `admin/quran/${selectedSurahNumber}/ayah/${ayahNumber}${nextMode === "view" ? "?mode=view" : ""}`,
+                            )}
+                        />)}
                 {showArtistManagement && <AdminArtistsManagement />}
                 {showPortfolioManagement && <section className="admin-portfolio-blocked" role="status"><Icon name="grid" size={28} /><h2>Portfolio management needs backend support</h2><p>No Portfolio API or portfolio persistence model is included in this repository. This section is intentionally read-only rather than reporting browser-only changes as saved.</p><ul><li>Add authenticated list, create, edit, delete, and visibility endpoints.</li><li>Persist YouTube, Spotify, service, and project content types with publication state and display order.</li><li>Add a public endpoint that returns only published portfolio records.</li></ul><p>The required API contract is documented in <code>src/features/admin/ADMIN_API.md</code>.</p></section>}
                 {mode === "dashboard" && !quranSection && !showArtistManagement && !showPortfolioManagement && !showReciterManagement && <section className="admin-dashboard-content">
                     <div className="stat-grid"><article><span>{lyricRecords.filter((item) => item.status === "published").length}</span><small>Published lyrics</small></article><article><span>{lyricRecords.filter((item) => item.status === "draft").length}</span><small>Lyrics drafts</small></article><article><span>API</span><small>Quran records (load management)</small></article><article><span>API</span><small>Surah metadata (load management)</small></article></div>
-                    <div className="admin-content-shortcuts"><button onClick={() => openList("lyrics")}><b>Lyrics Management</b><span>View, search, edit, and publish server lyric records.</span></button><button onClick={() => go("admin/quran")}><b>Quran Management</b><span>Browse all Surahs and manage Ayahs and translations through authenticated APIs.</span></button><button onClick={() => { setShowArtistManagement(true); setMessage(""); setError(""); }}><b>Artist Management</b><span>Manage API-backed artists and role assignments.</span></button><button onClick={() => setShowReciterManagement(true)}><b>Legacy Reciters</b><span>Manage legacy browser-demo reciter profiles.</span></button><button onClick={() => setShowPortfolioManagement(true)}><b>Portfolio Management</b><span>Portfolio CRUD is waiting for authenticated backend endpoints.</span></button></div>
+                    <div className="admin-content-shortcuts"><button onClick={() => openList("lyrics")}><b>Lyrics Management</b><span>View, search, edit, and publish server lyric records.</span></button><button onClick={() => go("admin/quran")}><b>Quran Management</b><span>Browse all Surahs and manage Ayahs and translations through authenticated APIs.</span></button><button onClick={() => { setShowArtistManagement(true); setError(""); }}><b>Artist Management</b><span>Manage API-backed artists and role assignments.</span></button><button onClick={() => setShowReciterManagement(true)}><b>Legacy Reciters</b><span>Manage legacy browser-demo reciter profiles.</span></button><button onClick={() => setShowPortfolioManagement(true)}><b>Portfolio Management</b><span>Portfolio CRUD is waiting for authenticated backend endpoints.</span></button></div>
                 </section>}
 
                 {mode === "list" && kind === "lyrics" && !showArtistManagement && <section className="admin-table admin-record-list">

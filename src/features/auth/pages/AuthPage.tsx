@@ -4,6 +4,7 @@ import { photos } from "../../../app/config/media";
 import { readPendingAction, safeReturnTo } from "../../../authActions.js";
 import { adminAuth, AdminApiError } from "../services/adminAuth.js";
 import { Btn, Icon, Logo } from "../../../components/ui";
+import { notify } from "../../../app/notifications/toastStore.js";
 
 function AuthFormField({ label, name, type = "text", placeholder }: { label: string; name: string; type?: string; placeholder?: string }) {
     const t = useInterfaceText();
@@ -45,16 +46,21 @@ export function AuthPage({ mode, go }: { mode: "login" | "register"; go: (route:
             const pendingAction = readPendingAction();
             const returnTo = pendingAction ? safeReturnTo(pendingAction.returnTo, pendingAction.action) : null;
             go((returnTo || "#admin").slice(1));
+            notify.success("Signed in successfully.");
         } catch (err) {
             if (err instanceof AdminApiError) {
                 // Never expose whether the account exists — use a generic message.
                 setError("Sign-in failed. Check your email and password and try again.");
+                notify.error("Sign-in failed. Check your email and password and try again.");
             } else if (err instanceof Error && err.message.includes("not authorized")) {
                 setError("This account is not authorized to access the admin panel.");
+                notify.error("This account is not authorized to access the admin panel.");
             } else if (err instanceof Error && err.message.includes("not configured")) {
                 setError("The API is not reachable. Ensure the backend is running on port 8080.");
+                notify.error("The API is not reachable. Ensure the backend is running on port 8080.");
             } else {
                 setError("Sign-in failed. Please try again.");
+                notify.error("Sign-in failed. Please try again.");
             }
         } finally {
             setIsSubmitting(false);

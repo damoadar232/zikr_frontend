@@ -90,6 +90,26 @@ test("validates a standalone Ayah without requiring translations", () => {
         arabicText: "Arabic text",
         existingAyahs: records,
     }), /already exists/);
+    assert.match(validateAyahRecord({
+        surahNumber: 2,
+        ayahNumber: 2.5,
+        ayahCount: 286,
+        arabicText: "Arabic text",
+        existingAyahs: records,
+    }), /from 1 to 286/);
+    assert.match(validateAyahRecord({
+        surahNumber: 2,
+        ayahNumber: 2,
+        arabicText: "Arabic text",
+        existingAyahs: records,
+    }), /Canonical Ayah count is unavailable/);
+    assert.match(validateAyahRecord({
+        surahNumber: 2,
+        ayahNumber: 2,
+        ayahCount: 286,
+        arabicText: "  \n ",
+        existingAyahs: records,
+    }), /Arabic text is required/);
 });
 
 test("creates an Ayah as draft without sending translation fields", async () => {
