@@ -1,6 +1,7 @@
 package com.zikrelahi.api.quran.translation;
 
 import com.zikrelahi.api.common.ContentStatus;
+import com.zikrelahi.api.common.ConflictException;
 import com.zikrelahi.api.common.ResourceNotFoundException;
 import com.zikrelahi.api.quran.ayah.AyahRepository;
 import com.zikrelahi.api.quran.translator.Translator;
@@ -12,8 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 /**
- * Manages per-language translation independently.
- * Updating English never touches Arabic, Hindi, or Urdu rows.
+ * Manages each translator's translation independently.
+ * Updating one translator never touches another translation row.
  */
 @Service
 @RequiredArgsConstructor
@@ -27,18 +28,14 @@ public class TranslationService {
     public List<TranslationDto> listByAyah(int surahNumber, int ayahNumber) {
         validateAyahAddress(surahNumber, ayahNumber);
         return translationRepository
-                .findBySurahNumberAndAyahNumberOrderByLanguageCodeAsc(
+                .findBySurahNumberAndAyahNumberOrderByLanguageCodeAscTranslatorIdAsc(
                         (short) surahNumber, (short) ayahNumber)
                 .stream()
                 .map(TranslationDto::from)
                 .toList();
     }
 
-    /**
-     * Creates or replaces the translation for exactly one language.
-     * If a row already exists for (surah, ayah, lang) it is updated in-place.
-     * Other language rows are untouched.
-     */
+    /** Creates or replaces exactly the selected translator's translation. */
     @Transactional
     public TranslationDto upsert(int surahNumber, int ayahNumber,
                                   String langCode, TranslationRequest req) {
@@ -65,8 +62,8 @@ public class TranslationService {
 
         // Upsert — update existing row or create a new one
         Translation translation = translationRepository
-                .findBySurahNumberAndAyahNumberAndLanguageCode(
-                        (short) surahNumber, (short) ayahNumber, language)
+                .findBySurahNumberAndAyahNumberAndLanguageCodeAndTranslatorId(
+                        (short) surahNumber, (short) ayahNumber, language, translator.getId())
                 .orElseGet(() -> Translation.builder()
                         .surahNumber((short) surahNumber)
                         .ayahNumber((short) ayahNumber)
@@ -80,26 +77,57 @@ public class TranslationService {
         return TranslationDto.from(translationRepository.save(translation));
     }
 
-    /** Publish or draft a single language's translation independently. */
+    /**
+     * Legacy status route is only unambiguous when there is one translator for
+     * the language. Multi-translator callers must use the translator-ID route.
+     */
     @Transactional
     public TranslationDto patchStatus(int surahNumber, int ayahNumber,
                                        String langCode, ContentStatus status) {
         validateAyahAddress(surahNumber, ayahNumber);
-        LanguageCode language;
+        LanguageCode language = parseLanguage(langCode);
+        List<Translation> matches = translationRepository
+                .findBySurahNumberAndAyahNumberAndLanguageCodeOrderByTranslatorIdAsc(
+                        (short) surahNumber, (short) ayahNumber, language);
+        if (matches.isEmpty()) {
+            throw new ResourceNotFoundException(
+                    "No " + langCode + " translation for Ayah "
+                    + surahNumber + ":" + ayahNumber + ".");
+        }
+        if (matches.size() > 1) {
+            throw new ConflictException(
+                    "A translator ID is required when multiple " + langCode
+                    + " translations exist for Ayah " + surahNumber + ":" + ayahNumber + ".");
+        }
+        return updateStatus(matches.get(0), status);
+    }
+
+    @Transactional
+    public TranslationDto patchStatus(int surahNumber, int ayahNumber,
+                                     String langCode, Long translatorId, ContentStatus status) {
+        validateAyahAddress(surahNumber, ayahNumber);
+        LanguageCode language = parseLanguage(langCode);
+        Translation translation = translationRepository
+                .findBySurahNumberAndAyahNumberAndLanguageCodeAndTranslatorId(
+                        (short) surahNumber, (short) ayahNumber, language, translatorId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "No " + langCode + " translation from translator " + translatorId
+                        + " for Ayah " + surahNumber + ":" + ayahNumber + "."));
+        return updateStatus(translation, status);
+    }
+
+    private TranslationDto updateStatus(Translation translation, ContentStatus status) {
+        translation.setStatus(status);
+        return TranslationDto.from(translationRepository.save(translation));
+    }
+
+    private static LanguageCode parseLanguage(String langCode) {
         try {
-            language = LanguageCode.valueOf(langCode);
+            return LanguageCode.valueOf(langCode);
         } catch (IllegalArgumentException ex) {
             throw new IllegalArgumentException(
                     "Language '" + langCode + "' is not supported. Use en, hi, or ur.");
         }
-        Translation translation = translationRepository
-                .findBySurahNumberAndAyahNumberAndLanguageCode(
-                        (short) surahNumber, (short) ayahNumber, language)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "No " + langCode + " translation for Ayah "
-                        + surahNumber + ":" + ayahNumber + "."));
-        translation.setStatus(status);
-        return TranslationDto.from(translationRepository.save(translation));
     }
 
     private void validateAyahAddress(int surahNumber, int ayahNumber) {

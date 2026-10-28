@@ -13,7 +13,7 @@ export interface QuranAdminApi {
     setAyahStatus(surah: number, ayah: number, status: string): Promise<any>;
     listTranslations(surah: number, ayah: number): Promise<any[]>;
     upsertTranslation(surah: number, ayah: number, language: string, data: object): Promise<any>;
-    setTranslationStatus(surah: number, ayah: number, language: string, status: string): Promise<any>;
+    setTranslationStatus(surah: number, ayah: number, language: string, status: string, translatorId?: number): Promise<any>;
     listTranslators(language?: string): Promise<any[]>;
     createTranslator(data: object): Promise<any>;
     validateImport(data: object): Promise<any>;

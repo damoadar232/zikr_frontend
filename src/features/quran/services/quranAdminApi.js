@@ -51,8 +51,8 @@ export function createQuranAdminApi({
             `/api/v1/admin/quran/ayahs/${surah}/${ayah}/translations/${language}`,
             { method: "PUT", body: data },
         ),
-        setTranslationStatus: (surah, ayah, language, status) => request(
-            `/api/v1/admin/quran/ayahs/${surah}/${ayah}/translations/${language}/status`,
+        setTranslationStatus: (surah, ayah, language, status, translatorId) => request(
+            `/api/v1/admin/quran/ayahs/${surah}/${ayah}/translations/${language}${translatorId === undefined ? "" : `/${encodeURIComponent(translatorId)}`}/status`,
             { method: "PATCH", body: { status } },
         ),
         listTranslators: (language) => request(

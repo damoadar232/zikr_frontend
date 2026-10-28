@@ -605,6 +605,10 @@ export default function App() {
         <RouterRoute path="register" element={<AuthPage mode="register" go={go} />} />
         <RouterRoute path="admin" element={<Suspense fallback={<main className="admin-access" role="status">Loading content admin…</main>}><AdminContentPage go={go} isLoggedIn={isLoggedIn} onLogout={handleLogout} /></Suspense>} />
         <RouterRoute path="admin-edit" element={<Suspense fallback={<main className="admin-access" role="status">Loading content admin…</main>}><AdminContentPage edit go={go} isLoggedIn={isLoggedIn} onLogout={handleLogout} /></Suspense>} />
+        <RouterRoute path="admin/quran" element={<Suspense fallback={<main className="admin-access" role="status">Loading content admin…</main>}><AdminContentPage quranSection go={go} isLoggedIn={isLoggedIn} onLogout={handleLogout} /></Suspense>} />
+        <RouterRoute path="admin/quran/:surahNumber/ayah/new" element={<Suspense fallback={<main className="admin-access" role="status">Loading content admin…</main>}><AdminContentPage quranSection go={go} isLoggedIn={isLoggedIn} onLogout={handleLogout} /></Suspense>} />
+        <RouterRoute path="admin/quran/:surahNumber/ayah/:ayahNumber" element={<Suspense fallback={<main className="admin-access" role="status">Loading content admin…</main>}><AdminContentPage quranSection go={go} isLoggedIn={isLoggedIn} onLogout={handleLogout} /></Suspense>} />
+        <RouterRoute path="admin/quran/:surahNumber" element={<Suspense fallback={<main className="admin-access" role="status">Loading content admin…</main>}><AdminContentPage quranSection go={go} isLoggedIn={isLoggedIn} onLogout={handleLogout} /></Suspense>} />
         <RouterRoute path="book-reader" element={<BookReader go={go} />} />
       </RouterRoute>
     </Routes>

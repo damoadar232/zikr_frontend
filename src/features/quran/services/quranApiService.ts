@@ -45,6 +45,21 @@ export interface ApiAyah {
   translation: ApiAyahTranslation | null;
 }
 
+export interface ApiPublicTranslator {
+  id: number;
+  name: string;
+  languageCode: "en" | "hi" | "ur";
+}
+
+export interface ApiPublishedTranslation {
+  surahNumber: number;
+  ayahNumber: number;
+  languageCode: "en" | "hi" | "ur";
+  translatorId: number;
+  translatorName: string;
+  text: string;
+}
+
 export interface ApiJuz {
   number: number;
   arabicName: string;
@@ -58,9 +73,10 @@ export interface ApiJuz {
 
 // ─── Core fetch helper ────────────────────────────────────────────────────────
 
-async function apiFetch<T>(path: string): Promise<T> {
+async function apiFetch<T>(path: string, signal?: AbortSignal): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     headers: { Accept: "application/json" },
+    signal,
   });
   if (!res.ok) {
     let message = `API error ${res.status}`;
@@ -96,6 +112,20 @@ export function fetchSurahAyahs(surahNumber: number, translation: string): Promi
   );
 }
 
+/** GET /api/v1/quran/surahs/:number/translations?languages=en&languages=ur */
+export function fetchSurahTranslations(
+  surahNumber: number,
+  languages: readonly string[],
+  signal?: AbortSignal,
+): Promise<ApiPublishedTranslation[]> {
+  const params = new URLSearchParams();
+  languages.forEach((language) => params.append("languages", language));
+  return apiFetch<ApiPublishedTranslation[]>(
+    `/api/v1/quran/surahs/${surahNumber}/translations?${params.toString()}`,
+    signal,
+  );
+}
+
 // ─── Public Juz endpoints ─────────────────────────────────────────────────────
 
 /** GET /api/v1/quran/juz */
@@ -108,6 +138,48 @@ export function fetchJuzAyahs(juzNumber: number, translation: string): Promise<A
   return apiFetch<ApiAyah[]>(
     `/api/v1/quran/juz/${juzNumber}/ayahs?translation=${encodeURIComponent(translation)}`,
   );
+}
+
+/** GET /api/v1/quran/juz/:number/translations?languages=en&languages=ur */
+export function fetchJuzTranslations(
+  juzNumber: number,
+  languages: readonly string[],
+  signal?: AbortSignal,
+): Promise<ApiPublishedTranslation[]> {
+  const params = new URLSearchParams();
+  languages.forEach((language) => params.append("languages", language));
+  return apiFetch<ApiPublishedTranslation[]>(
+    `/api/v1/quran/juz/${juzNumber}/translations?${params.toString()}`,
+    signal,
+  );
+}
+
+let publicTranslatorCache: ApiPublicTranslator[] | null = null;
+let publicTranslatorRequest: Promise<ApiPublicTranslator[]> | null = null;
+let publicTranslatorGeneration = 0;
+
+/** GET /api/v1/quran/translators — public-safe translator identifiers and names */
+export function fetchPublicTranslators(force = false): Promise<ApiPublicTranslator[]> {
+  if (!force && publicTranslatorCache) return Promise.resolve(publicTranslatorCache);
+  if (!force && publicTranslatorRequest) return publicTranslatorRequest;
+
+  const generation = ++publicTranslatorGeneration;
+  const request = apiFetch<ApiPublicTranslator[]>("/api/v1/quran/translators")
+    .then((translators) => {
+      const sorted = translators.slice().sort((left, right) =>
+        left.languageCode.localeCompare(right.languageCode) ||
+        left.name.localeCompare(right.name) ||
+        left.id - right.id,
+      );
+      if (publicTranslatorGeneration === generation) publicTranslatorCache = sorted;
+      return sorted;
+    })
+    .finally(() => {
+      if (publicTranslatorRequest === request) publicTranslatorRequest = null;
+    });
+
+  publicTranslatorRequest = request;
+  return request;
 }
 
 // ─── Utility ─────────────────────────────────────────────────────────────────

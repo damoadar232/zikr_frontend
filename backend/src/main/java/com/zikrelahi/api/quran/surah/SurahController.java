@@ -3,6 +3,7 @@ package com.zikrelahi.api.quran.surah;
 import com.zikrelahi.api.common.ApiResponse;
 import com.zikrelahi.api.quran.ayah.AyahService;
 import com.zikrelahi.api.quran.ayah.PublicAyahDto;
+import com.zikrelahi.api.quran.ayah.PublicAyahTranslationDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -62,5 +63,17 @@ public class SurahController {
             @RequestParam(defaultValue = "en") String translation) {
         List<PublicAyahDto> ayahs = ayahService.listPublishedWithTranslation(number, translation);
         return ResponseEntity.ok(ApiResponse.ok(ayahs));
+    }
+
+    /**
+     * GET /api/v1/quran/surahs/{number}/translations?languages=en&languages=ur
+     * Returns only published translation rows with stable translator IDs.
+     */
+    @GetMapping("/{number}/translations")
+    public ResponseEntity<ApiResponse<List<PublicAyahTranslationDto>>> getSurahTranslations(
+            @PathVariable int number,
+            @RequestParam(required = false) List<String> languages) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                ayahService.listPublishedTranslations(number, languages)));
     }
 }

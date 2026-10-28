@@ -2,7 +2,9 @@ package com.zikrelahi.api.quran.juz;
 
 import com.zikrelahi.api.common.ContentStatus;
 import com.zikrelahi.api.common.ResourceNotFoundException;
+import com.zikrelahi.api.quran.ayah.Ayah;
 import com.zikrelahi.api.quran.ayah.PublicAyahDto;
+import com.zikrelahi.api.quran.ayah.PublicAyahTranslationDto;
 import com.zikrelahi.api.quran.translation.LanguageCode;
 import com.zikrelahi.api.quran.translation.Translation;
 import com.zikrelahi.api.quran.translation.TranslationRepository;
@@ -11,6 +13,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -42,16 +47,58 @@ public class JuzService {
             throw new IllegalArgumentException(
                     "Translation language '" + languageCode + "' is not supported. Use en, hi, or ur.");
         }
-        return translationRepository.findPublishedAyahsBetween(
+        Map<String, PublicAyahDto> ayahs = new LinkedHashMap<>();
+        translationRepository.findPublishedAyahsBetween(
                         juz.getStartSurah(), juz.getStartAyah(),
                         juz.getEndSurah(), juz.getEndAyah(),
                         language, ContentStatus.PUBLISHED)
+                .forEach(row -> {
+                    Ayah ayah = (Ayah) row[0];
+                    ayahs.putIfAbsent(
+                            ayah.getSurahNumber() + ":" + ayah.getAyahNumber(),
+                            PublicAyahDto.from(ayah, (Translation) row[1], (String) row[2]));
+                });
+        return List.copyOf(ayahs.values());
+    }
+
+    @Transactional(readOnly = true)
+    public List<PublicAyahTranslationDto> listPublishedTranslations(
+            int number, List<String> languageCodes) {
+        Juz juz = getJuz(number);
+        List<LanguageCode> languages = parseLanguages(languageCodes);
+        if (languages.isEmpty()) return List.of();
+
+        return translationRepository.findPublishedTranslationsBetween(
+                        juz.getStartSurah(), juz.getStartAyah(),
+                        juz.getEndSurah(), juz.getEndAyah(),
+                        languages, ContentStatus.PUBLISHED)
                 .stream()
-                .map(row -> PublicAyahDto.from(
-                        (com.zikrelahi.api.quran.ayah.Ayah) row[0],
-                        (Translation) row[1],
-                        (String) row[2]))
+                .map(JuzService::toPublicTranslation)
                 .toList();
+    }
+
+    private static List<LanguageCode> parseLanguages(List<String> languageCodes) {
+        if (languageCodes == null) return List.of();
+        LinkedHashSet<LanguageCode> languages = new LinkedHashSet<>();
+        for (String code : languageCodes) {
+            try {
+                languages.add(LanguageCode.valueOf(code));
+            } catch (IllegalArgumentException | NullPointerException ex) {
+                throw new IllegalArgumentException(
+                        "Translation languages must be en, hi, or ur.");
+            }
+        }
+        return List.copyOf(languages);
+    }
+
+    private static PublicAyahTranslationDto toPublicTranslation(Object[] row) {
+        return new PublicAyahTranslationDto(
+                ((Number) row[0]).intValue(),
+                ((Number) row[1]).intValue(),
+                ((LanguageCode) row[2]).name(),
+                (Long) row[3],
+                (String) row[4],
+                (String) row[5]);
     }
 
     private Juz getJuz(int number) {

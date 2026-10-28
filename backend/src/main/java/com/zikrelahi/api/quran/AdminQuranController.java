@@ -117,8 +117,8 @@ public class AdminQuranController {
 
     /**
      * PUT /api/v1/admin/quran/ayahs/{surah}/{ayah}/translations/{lang}
-     * Creates or replaces the translation for exactly one language.
-     * Other languages are never touched.
+     * Creates or replaces the selected translator's translation for this language.
+     * Other translators' and languages' rows are never touched.
      */
     @PutMapping("/ayahs/{surah}/{ayah}/translations/{lang}")
     public ResponseEntity<ApiResponse<TranslationDto>> upsertTranslation(
@@ -149,6 +149,18 @@ public class AdminQuranController {
             @PathVariable String lang,
             @Valid @RequestBody StatusRequest request) {
         TranslationDto dto = translationService.patchStatus(surah, ayah, lang, request.status());
+        return ResponseEntity.ok(ApiResponse.ok(dto));
+    }
+
+    @PatchMapping("/ayahs/{surah}/{ayah}/translations/{lang}/{translatorId}/status")
+    public ResponseEntity<ApiResponse<TranslationDto>> patchTranslatorTranslationStatus(
+            @PathVariable int surah,
+            @PathVariable int ayah,
+            @PathVariable String lang,
+            @PathVariable Long translatorId,
+            @Valid @RequestBody StatusRequest request) {
+        TranslationDto dto = translationService.patchStatus(
+                surah, ayah, lang, translatorId, request.status());
         return ResponseEntity.ok(ApiResponse.ok(dto));
     }
 

@@ -60,6 +60,34 @@ test("saves Ayahs and translations through language-specific admin routes", asyn
     assert.deepEqual(JSON.parse(calls[1].options.body), { text: "verified translation", translatorId: 8 });
 });
 
+test("updates translation publication status for the selected translator", async () => {
+    const { api, calls } = createApi([{ body: { data: { id: 8, status: "PUBLISHED" } } }]);
+    await api.setTranslationStatus(2, 5, "en", "PUBLISHED", 8);
+    assert.equal(calls[0].path, "/api/v1/admin/quran/ayahs/2/5/translations/en/8/status");
+    assert.equal(calls[0].options.method, "PATCH");
+    assert.deepEqual(JSON.parse(calls[0].options.body), { status: "PUBLISHED" });
+});
+
+test("lists language-filtered translators and sends backend translator request fields", async () => {
+    const payload = {
+        name: "Verified translator",
+        languageCode: "ur",
+        sourceRef: "Publisher edition 2020",
+        license: "CC BY 4.0",
+        licenseNotes: "Attribution required",
+    };
+    const { api, calls } = createApi([{ body: { data: [] } }, { body: { data: { id: 8, ...payload } } }]);
+
+    await api.listTranslators("ur");
+    await api.createTranslator(payload);
+
+    assert.equal(calls[0].path, "/api/v1/admin/quran/translators?language=ur");
+    assert.equal(calls[0].options.method, "GET");
+    assert.equal(calls[1].path, "/api/v1/admin/quran/translators");
+    assert.equal(calls[1].options.method, "POST");
+    assert.deepEqual(JSON.parse(calls[1].options.body), payload);
+});
+
 test("surfaces authenticated API failures instead of falling back to demo content", async () => {
     const { api } = createApi([{
         ok: false,

@@ -47,11 +47,12 @@ public class ImportValidator {
         for (Ayah ayah : ayahRepository.findAll()) {
             existingAyahs.put(key(ayah.getSurahNumber(), ayah.getAyahNumber()), ayah);
         }
-        Map<String, Set<LanguageCode>> existingTranslations = new HashMap<>();
+        Map<String, Set<String>> existingTranslations = new HashMap<>();
         for (Translation translation : translationRepository.findAll()) {
             existingTranslations.computeIfAbsent(
                     key(translation.getSurahNumber(), translation.getAyahNumber()),
-                    ignored -> new HashSet<>()).add(translation.getLanguageCode());
+                    ignored -> new HashSet<>()).add(
+                            translationKey(translation.getLanguageCode(), translation.getTranslator().getId()));
         }
 
         // Track seen (surah, ayah) pairs for duplicate detection within the batch
@@ -80,7 +81,7 @@ public class ImportValidator {
             Map<Long, Translator> translatorMap,
             Set<String> seen,
             Map<String, Ayah> existingAyahs,
-            Map<String, Set<LanguageCode>> existingTranslations) {
+            Map<String, Set<String>> existingTranslations) {
 
         List<ImportRowError> errors = new ArrayList<>();
         if (row == null) {
@@ -169,24 +170,31 @@ public class ImportValidator {
                 "ur", "translationUr", "translatorIdUr",
                 surahMap, translatorMap, errors);
 
-        validateExistingTranslation(rowNum, row, hasEn, LanguageCode.en, existingTranslations, errors);
-        validateExistingTranslation(rowNum, row, hasHi, LanguageCode.hi, existingTranslations, errors);
-        validateExistingTranslation(rowNum, row, hasUr, LanguageCode.ur, existingTranslations, errors);
+        validateExistingTranslation(
+                rowNum, row, hasEn, LanguageCode.en, row.translatorIdEn(), existingTranslations, errors);
+        validateExistingTranslation(
+                rowNum, row, hasHi, LanguageCode.hi, row.translatorIdHi(), existingTranslations, errors);
+        validateExistingTranslation(
+                rowNum, row, hasUr, LanguageCode.ur, row.translatorIdUr(), existingTranslations, errors);
 
         return errors;
     }
 
     private void validateExistingTranslation(
-            int rowNum, AyahImportRow row, boolean hasText, LanguageCode language,
-            Map<String, Set<LanguageCode>> existingTranslations, List<ImportRowError> errors) {
-        if (hasText && existingTranslations
+            int rowNum, AyahImportRow row, boolean hasText, LanguageCode language, Long translatorId,
+            Map<String, Set<String>> existingTranslations, List<ImportRowError> errors) {
+        if (hasText && translatorId != null && existingTranslations
                 .getOrDefault(key(row.surahNumber(), row.ayahNumber()), Set.of())
-                .contains(language)) {
+                .contains(translationKey(language, translatorId))) {
             errors.add(new ImportRowError(rowNum, row.surahNumber(), row.ayahNumber(),
                     "translation" + language.name().toUpperCase(),
                     "EXISTING_TRANSLATION_CONFLICT",
-                    "A translation already exists for this Ayah and language; import will not replace it."));
+                    "A translation from this translator already exists for this Ayah and language; import will not replace it."));
         }
+    }
+
+    private static String translationKey(LanguageCode language, Long translatorId) {
+        return language.name() + ":" + translatorId;
     }
 
     private void validateTranslation(

@@ -1,10 +1,13 @@
 ﻿import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useLocation, useParams } from "react-router-dom";
 import { useContentCollection } from "../../../app/hooks/useContentCollection";
 import { LocalizedText, useInterfaceText } from "../../../app/providers/interfaceLanguage";
 import { Icon, Logo } from "../../../components/ui";
 import { lyrics as initialLyrics, artists, lyricBooks, lyricCategories, lyricSubjects, poets } from "../../../lyricsData";
 import { surahData } from "../../quran/data/surahMetadata";
 import { AdminQuranManagement } from "../../quran/admin/AdminQuranManagement";
+import { AdminQuranSurahManagement } from "../../quran/admin/AdminQuranSurahManagement";
+import { AdminQuranAyahEditor } from "../../quran/admin/AdminQuranAyahEditor";
 import { contentRepository } from "../services/contentRepository.js";
 import { getYouTubeVideoId, slugifyLyricsTitle } from "../../lyrics/utils/youtubeVideo.js";
 import { isLyricDocument, lyricDocumentToText, textToLyricDocument } from "../../lyrics/utils/lyricDocument.js";
@@ -85,13 +88,17 @@ function ErrorMessage({ message }: { message: string }) {
     return message ? <p className="admin-form-error" role="alert">{message}</p> : null;
 }
 
-export function AdminContentPage({ edit = false, go, isLoggedIn, onLogout }: { edit?: boolean; go: (route: string) => void; isLoggedIn: boolean; onLogout?: () => void }) {
+export function AdminContentPage({ edit = false, quranSection = false, go, isLoggedIn, onLogout }: { edit?: boolean; quranSection?: boolean; go: (route: string) => void; isLoggedIn: boolean; onLogout?: () => void }) {
     const t = useInterfaceText();
+    const location = useLocation();
+    const { surahNumber: surahParam, ayahNumber: ayahParam } = useParams<{ surahNumber?: string; ayahNumber?: string }>();
+    const selectedSurahNumber = surahParam === undefined ? undefined : Number(surahParam);
+    const quranMode = new URLSearchParams(location.search).get("mode") === "view" ? "view" : "edit";
     const lyricRecords = useContentCollection<AdminRecord>("lyrics", initialLyrics as AdminRecord[]);
     const quranRecords: AdminRecord[] = [];
     const reciterRecords = useContentCollection<ReciterProfile>("reciters", reciterProfiles);
-    const [mode, setMode] = useState<PageMode>(edit ? "form" : "dashboard");
-    const [kind, setKind] = useState<ContentKind>("lyrics");
+    const [mode, setMode] = useState<PageMode>(quranSection ? "list" : edit ? "form" : "dashboard");
+    const [kind, setKind] = useState<ContentKind>(quranSection ? "quranAyahs" : "lyrics");
     const [selectedId, setSelectedId] = useState("");
     const [draft, setDraft] = useState<any>(() => getLyricsDraft());
     const [query, setQuery] = useState("");
@@ -104,6 +111,23 @@ export function AdminContentPage({ edit = false, go, isLoggedIn, onLogout }: { e
     const [showPortfolioManagement, setShowPortfolioManagement] = useState(false);
     const [reciterQuery, setReciterQuery] = useState("");
     const draftBaseline = useRef(JSON.stringify(getLyricsDraft()));
+
+    useEffect(() => {
+        if (quranSection) {
+            setMode("list");
+            setKind("quranAyahs");
+            setShowArtistManagement(false);
+            setShowReciterManagement(false);
+            setShowPortfolioManagement(false);
+        } else if (location.pathname.replace(/^\//, "") === "admin") {
+            const section = new URLSearchParams(location.search).get("section");
+            setShowArtistManagement(section === "artists");
+            setShowReciterManagement(section === "reciters");
+            setShowPortfolioManagement(section === "portfolio");
+            setKind("lyrics");
+            setMode(section === "lyrics" || section === "portfolio" ? "apiLyrics" : section ? "list" : "dashboard");
+        }
+    }, [location.pathname, location.search, quranSection]);
 
     useEffect(() => {
         if (edit) {
@@ -261,14 +285,12 @@ export function AdminContentPage({ edit = false, go, isLoggedIn, onLogout }: { e
         return <RecitersManagement onBack={() => setShowReciterManagement(false)} onLogout={onLogout} onNavigate={(section) => {
             setShowReciterManagement(false);
             if (section === "lyrics") {
-                setShowPortfolioManagement(false);
-                openList("lyrics");
+                go("admin?section=lyrics");
             } else if (section === "quran") {
                 setShowPortfolioManagement(false);
-                openList("quranAyahs");
+                go("admin/quran");
             } else {
-                setMode("apiLyrics");
-                setShowPortfolioManagement(true);
+                go("admin?section=portfolio");
             }
         }} />;
     }
@@ -279,28 +301,50 @@ export function AdminContentPage({ edit = false, go, isLoggedIn, onLogout }: { e
                 <Logo />
                 <small>CONTENT ADMIN · AUTHENTICATED API / LEGACY DEMO</small>
                 <nav className="admin-sidebar-nav" aria-label="Admin sections">
-                    <button className={mode === "dashboard" && !showReciterManagement && !showArtistManagement && !showPortfolioManagement ? "active" : ""} onClick={() => { setShowPortfolioManagement(false); setShowReciterManagement(false); setShowArtistManagement(false); setMode("dashboard"); }}><Icon name="grid" size={17} />Dashboard</button>
-                    <button className={kind === "lyrics" && mode !== "dashboard" && !showReciterManagement && !showArtistManagement && !showPortfolioManagement ? "active" : ""} onClick={() => { setShowPortfolioManagement(false); setShowReciterManagement(false); setShowArtistManagement(false); openList("lyrics"); }}><Icon name="pen" size={17} />Lyrics Management</button>
-                    <button className={kind === "quranAyahs" && mode !== "dashboard" && !showReciterManagement && !showArtistManagement && !showPortfolioManagement ? "active" : ""} onClick={() => { setShowPortfolioManagement(false); setShowReciterManagement(false); setShowArtistManagement(false); openList("quranAyahs"); }}><Icon name="book" size={17} />Quran Management</button>
-                    <button className={showArtistManagement ? "active" : ""} onClick={() => { setShowPortfolioManagement(false); setShowReciterManagement(false); setShowArtistManagement(true); setMessage(""); setError(""); }}><Icon name="user" size={17} />Artist Management</button>
-                    <button className={showReciterManagement ? "active" : ""} onClick={() => { setShowPortfolioManagement(false); setShowArtistManagement(false); setShowReciterManagement(true); }}><Icon name="user" size={17} />Legacy Reciters</button>
-                    <button className={showPortfolioManagement ? "active" : ""} onClick={() => { setShowReciterManagement(false); setShowArtistManagement(false); setMode("apiLyrics"); setShowPortfolioManagement(true); }}><Icon name="grid" size={17} />Portfolio Management</button>
+                    <button className={!quranSection && mode === "dashboard" && !showReciterManagement && !showArtistManagement && !showPortfolioManagement ? "active" : ""} onClick={() => { setShowPortfolioManagement(false); setShowReciterManagement(false); setShowArtistManagement(false); setKind("lyrics"); setMode("dashboard"); go("admin"); }}><Icon name="grid" size={17} />Dashboard</button>
+                    <button className={!quranSection && kind === "lyrics" && mode !== "dashboard" && !showReciterManagement && !showArtistManagement && !showPortfolioManagement ? "active" : ""} onClick={() => go("admin?section=lyrics")}><Icon name="pen" size={17} />Lyrics Management</button>
+                    <button className={quranSection || !showReciterManagement && !showArtistManagement && !showPortfolioManagement && kind === "quranAyahs" && mode !== "dashboard" ? "active" : ""} onClick={() => { setShowPortfolioManagement(false); setShowReciterManagement(false); setShowArtistManagement(false); go("admin/quran"); }}><Icon name="book" size={17} />Quran Management</button>
+                    <button className={!quranSection && showArtistManagement ? "active" : ""} onClick={() => go("admin?section=artists")}><Icon name="user" size={17} />Artist Management</button>
+                    <button className={!quranSection && showReciterManagement ? "active" : ""} onClick={() => go("admin?section=reciters")}><Icon name="user" size={17} />Legacy Reciters</button>
+                    <button className={!quranSection && showPortfolioManagement ? "active" : ""} onClick={() => go("admin?section=portfolio")}><Icon name="grid" size={17} />Portfolio Management</button>
                 </nav>
                 <button className="admin-signout" onClick={() => onLogout?.()}><Icon name="x" size={17} />Sign out</button>
             </aside>
             <div className="admin-main">
-                <header><div><small>ADMINISTRATION</small><h1>{showArtistManagement ? "Artist Management" : showPortfolioManagement ? "Portfolio Management" : mode === "dashboard" ? "Content dashboard" : mode === "apiLyrics" ? "Lyrics Management" : `${kind === "lyrics" ? "Lyrics" : "Quran Ayah"} management`}</h1></div><span className="admin-demo-badge">{(mode === "apiLyrics" && !showPortfolioManagement) || showArtistManagement || (kind === "quranAyahs" && mode !== "dashboard") ? "Authenticated API" : "Browser demo storage"}</span></header>
-                {mode !== "apiLyrics" && !showPortfolioManagement && !showArtistManagement && !(kind === "quranAyahs" && mode !== "dashboard") && <div className="admin-demo-warning" role="note">Changes in the legacy demo views persist in this browser only. They are not server records.</div>}
+                <header><div><small>ADMINISTRATION</small><h1>{quranSection ? "Quran Management" : showArtistManagement ? "Artist Management" : showPortfolioManagement ? "Portfolio Management" : mode === "dashboard" ? "Content dashboard" : mode === "apiLyrics" ? "Lyrics Management" : `${kind === "lyrics" ? "Lyrics" : "Quran Ayah"} management`}</h1></div><span className="admin-demo-badge">{quranSection || (mode === "apiLyrics" && !showPortfolioManagement) || showArtistManagement || (kind === "quranAyahs" && mode !== "dashboard") ? "Authenticated API" : "Browser demo storage"}</span></header>
+                {mode !== "apiLyrics" && !quranSection && !showPortfolioManagement && !showArtistManagement && !(kind === "quranAyahs" && mode !== "dashboard") && <div className="admin-demo-warning" role="note">Changes in the legacy demo views persist in this browser only. They are not server records.</div>}
                 {message && <p className="admin-success" role="status">{message}</p>}
                 <ErrorMessage message={error} />
 
                 {mode === "apiLyrics" && !showPortfolioManagement && !showArtistManagement && <AdminLyricsManagement />}
-                {kind === "quranAyahs" && mode !== "dashboard" && !showPortfolioManagement && !showArtistManagement && <AdminQuranManagement />}
+                {quranSection && (selectedSurahNumber === undefined
+                    ? <AdminQuranManagement onNavigate={(number, nextMode) => go(number === undefined
+                        ? "admin/quran"
+                        : `admin/quran/${number}?mode=${nextMode || "edit"}`)} />
+                    : ayahParam !== undefined
+                        ? <AdminQuranAyahEditor
+                            surahNumber={selectedSurahNumber}
+                            ayahNumberParam={ayahParam}
+                            mode={new URLSearchParams(location.search).get("mode") === "view" ? "view" : "edit"}
+                            onBack={() => go(`admin/quran/${selectedSurahNumber}?mode=edit`)}
+                            onNavigateAyah={(ayahNumber) => go(`admin/quran/${selectedSurahNumber}/ayah/${ayahNumber}`)}
+                        />
+                    : <AdminQuranSurahManagement
+                        key={`quran-surah-${selectedSurahNumber}`}
+                        surahNumber={selectedSurahNumber}
+                        mode={quranMode}
+                        onNavigate={(number, nextMode) => go(number === undefined
+                            ? "admin/quran"
+                            : `admin/quran/${number}?mode=${nextMode || "edit"}`)}
+                        onOpenAyah={(ayahNumber, nextMode) => go(
+                            `admin/quran/${selectedSurahNumber}/ayah/${ayahNumber}${nextMode === "view" ? "?mode=view" : ""}`,
+                        )}
+                    />)}
                 {showArtistManagement && <AdminArtistsManagement />}
                 {showPortfolioManagement && <section className="admin-portfolio-blocked" role="status"><Icon name="grid" size={28} /><h2>Portfolio management needs backend support</h2><p>No Portfolio API or portfolio persistence model is included in this repository. This section is intentionally read-only rather than reporting browser-only changes as saved.</p><ul><li>Add authenticated list, create, edit, delete, and visibility endpoints.</li><li>Persist YouTube, Spotify, service, and project content types with publication state and display order.</li><li>Add a public endpoint that returns only published portfolio records.</li></ul><p>The required API contract is documented in <code>src/features/admin/ADMIN_API.md</code>.</p></section>}
-                {mode === "dashboard" && !showArtistManagement && <section className="admin-dashboard-content">
+                {mode === "dashboard" && !quranSection && !showArtistManagement && !showPortfolioManagement && !showReciterManagement && <section className="admin-dashboard-content">
                     <div className="stat-grid"><article><span>{lyricRecords.filter((item) => item.status === "published").length}</span><small>Published lyrics</small></article><article><span>{lyricRecords.filter((item) => item.status === "draft").length}</span><small>Lyrics drafts</small></article><article><span>API</span><small>Quran records (load management)</small></article><article><span>API</span><small>Surah metadata (load management)</small></article></div>
-                    <div className="admin-content-shortcuts"><button onClick={() => openList("lyrics")}><b>Lyrics Management</b><span>View, search, edit, and publish server lyric records.</span></button><button onClick={() => openList("quranAyahs")}><b>Quran Management</b><span>Manage Ayahs and translations through authenticated APIs; validate and commit append-only JSON imports.</span></button><button onClick={() => { setShowArtistManagement(true); setMessage(""); setError(""); }}><b>Artist Management</b><span>Manage API-backed artists and role assignments.</span></button><button onClick={() => setShowReciterManagement(true)}><b>Legacy Reciters</b><span>Manage legacy browser-demo reciter profiles.</span></button><button onClick={() => setShowPortfolioManagement(true)}><b>Portfolio Management</b><span>Portfolio CRUD is waiting for authenticated backend endpoints.</span></button></div>
+                    <div className="admin-content-shortcuts"><button onClick={() => openList("lyrics")}><b>Lyrics Management</b><span>View, search, edit, and publish server lyric records.</span></button><button onClick={() => go("admin/quran")}><b>Quran Management</b><span>Browse all Surahs and manage Ayahs and translations through authenticated APIs.</span></button><button onClick={() => { setShowArtistManagement(true); setMessage(""); setError(""); }}><b>Artist Management</b><span>Manage API-backed artists and role assignments.</span></button><button onClick={() => setShowReciterManagement(true)}><b>Legacy Reciters</b><span>Manage legacy browser-demo reciter profiles.</span></button><button onClick={() => setShowPortfolioManagement(true)}><b>Portfolio Management</b><span>Portfolio CRUD is waiting for authenticated backend endpoints.</span></button></div>
                 </section>}
 
                 {mode === "list" && kind === "lyrics" && !showArtistManagement && <section className="admin-table admin-record-list">

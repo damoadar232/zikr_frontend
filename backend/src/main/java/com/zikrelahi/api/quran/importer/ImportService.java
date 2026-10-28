@@ -122,11 +122,12 @@ public class ImportService {
         }
 
         if (translationRepository
-                .findBySurahNumberAndAyahNumberAndLanguageCode(surahNo, ayahNo, lang)
+                .findBySurahNumberAndAyahNumberAndLanguageCodeAndTranslatorId(
+                        surahNo, ayahNo, lang, translatorId)
                 .isPresent()) {
             throw new ConflictException(
-                    "A " + lang + " translation already exists for Ayah "
-                    + surahNo + ":" + ayahNo + ".");
+                    "A " + lang + " translation from translator " + translatorId
+                    + " already exists for Ayah " + surahNo + ":" + ayahNo + ".");
         }
 
         Translator translator = translatorMap.get(translatorId);

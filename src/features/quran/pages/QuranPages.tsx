@@ -10,8 +10,16 @@ import { surahData, surahs } from "../data/surahMetadata";
 import { QURAN_BOOKMARKS_UPDATED_EVENT, readQuranBookmarks, writeQuranBookmarks } from "../services/quranBookmarks";
 import { useQuranSurahs } from "../hooks/useQuranSurahs";
 import { useQuranSurahAyahs } from "../hooks/useQuranSurahAyahs";
+import { useQuranTranslators } from "../hooks/useQuranTranslators";
+import { useQuranPublishedTranslations } from "../hooks/useQuranPublishedTranslations";
 import { getSurahLabel, useQuranJuzAyahs, useQuranJuzList } from "../hooks/useQuranJuz";
 import { hasApiUrl } from "../services/quranApiService";
+import { readQuranTranslatorSelection, writeQuranTranslatorSelection } from "../services/quranTranslatorPreferences.js";
+import {
+  filterQuranTranslators,
+  groupQuranTranslators,
+  selectQuranAyahTranslations,
+} from "../services/quranTranslationSelection.js";
 import { getJuzReaderRoute } from "../utils/quranBrowseUtils.js";
 
 type Route = string;
@@ -43,6 +51,12 @@ const quranRouteToBrowseValue: Record<string, (typeof quranBrowseItems)[number]>
   audio: "Audio Quran",
   "audio-detail": "Audio Quran",
   "surah-read": "Surah Directory",
+};
+
+const translationLanguageNames: Record<"en" | "hi" | "ur", string> = {
+  en: "English",
+  hi: "Hindi",
+  ur: "Urdu",
 };
 
 function getQuranSearchPlaceholder(category: (typeof quranBrowseItems)[number]) {
@@ -145,6 +159,16 @@ export function SurahRead({ go, isLoggedIn, onRequireAuthentication }: { go: (r:
   const [selectedTranslation, setSelectedTranslation] = useState<TranslationLanguage>(() =>
     translationResources.find((resource) => resource.languageCode !== "ta" && resource.languageCode === getRouteQueryParam("translation"))?.languageCode || "en",
   );
+  const {
+    items: registeredTranslators,
+    loading: translatorsLoading,
+    error: translatorsError,
+    retry: retryTranslators,
+    apiConfigured: translatorsApiConfigured,
+  } = useQuranTranslators();
+  const [selectedTranslatorIds, setSelectedTranslatorIds] = useState<string[]>([]);
+  const [translatorSelectionReady, setTranslatorSelectionReady] = useState(false);
+  const [translatorPreferenceError, setTranslatorPreferenceError] = useState<string | null>(null);
   useEffect(() => {
     const params = new URLSearchParams(window.location.hash.split("?")[1] || "");
     if (params.get("translation") === selectedTranslation) return;
@@ -156,6 +180,7 @@ export function SurahRead({ go, isLoggedIn, onRequireAuthentication }: { go: (r:
   const [navTab, setNavTab] = useState("Surah");
   const [surahSearch, setSurahSearch] = useState("");
   const [translationSearch, setTranslationSearch] = useState("");
+  const [draftTranslatorIds, setDraftTranslatorIds] = useState<string[]>([]);
   const [mode, setMode] = useState<"verses" | "reading">("verses");
   const [infoOpen, setInfoOpen] = useState(false);
   const [highlightedAyah, setHighlightedAyah] = useState(0);
@@ -178,6 +203,20 @@ export function SurahRead({ go, isLoggedIn, onRequireAuthentication }: { go: (r:
   const chapter = surahData[surahNumber - 1];
   const chapterNumber = surahNumber;
   const [arabicName, transliteratedName, ayahCount, revelation] = chapter;
+  const selectedTranslatorIdSet = new Set(selectedTranslatorIds);
+  const selectedTranslators = registeredTranslators.filter((translator) =>
+    selectedTranslatorIdSet.has(String(translator.id)),
+  );
+  const selectedLanguageCodes = [...new Set(selectedTranslators.map((translator) => translator.languageCode))];
+  const selectedLanguageSummary = selectedLanguageCodes.length
+    ? selectedLanguageCodes.map((language) => translationLanguageNames[language]).join(" · ")
+    : "No translations";
+  const {
+    items: publishedTranslations,
+    loading: publishedTranslationsLoading,
+    error: publishedTranslationsError,
+    retry: retryPublishedTranslations,
+  } = useQuranPublishedTranslations(chapterNumber, juzNumber, selectedLanguageCodes);
   const {
     chapterContent,
     loading: chapterLoading,
@@ -216,9 +255,46 @@ export function SurahRead({ go, isLoggedIn, onRequireAuthentication }: { go: (r:
       ayahNumber: rowAyah,
     }));
   const filteredSurahs = surahData.map((item, index) => ({ item, number: index + 1 })).filter(({ item, number }) => `${number} ${item[0]} ${item[1]} ${surahMeanings[number - 1]}`.toLowerCase().includes(surahSearch.toLowerCase()));
-  const filteredTranslations = translationResources.filter(resource => resource.languageCode !== "ta" && `${resource.language} ${resource.name} ${resource.attribution}`.toLowerCase().includes(translationSearch.toLowerCase()));
+  const filteredTranslators = filterQuranTranslators(registeredTranslators, translationSearch);
+  const translatorGroups = groupQuranTranslators(registeredTranslators);
+  const filteredTranslatorGroups = groupQuranTranslators(filteredTranslators);
   const activeJuz = juzNumber ?? ([...juzStarts].reverse().find(start => chapterNumber > start.surah || (chapterNumber === start.surah && ayahNumber >= start.ayah))?.juz || 1);
   const mappedPage = mushafPageStarts.find(start => start.surah === chapterNumber && start.ayah === ayahNumber)?.page;
+
+  useEffect(() => {
+    if (!translatorsApiConfigured) {
+      setTranslatorSelectionReady(true);
+      return;
+    }
+    if (translatorsLoading || translatorsError || translatorSelectionReady) return;
+
+    try {
+      const saved = readQuranTranslatorSelection();
+      const validIds = new Set(registeredTranslators.map((translator) => String(translator.id)));
+      const nextIds = saved === null
+        ? (() => {
+          const preferred = registeredTranslators.find(
+            (translator) => translator.languageCode === selectedTranslation,
+          );
+          return preferred ? [String(preferred.id)] : [];
+        })()
+        : saved.filter((id) => validIds.has(id));
+      setSelectedTranslatorIds(nextIds);
+    } catch (error) {
+      setSelectedTranslatorIds([]);
+      setTranslatorPreferenceError(
+        error instanceof Error ? error.message : "Could not read saved Quran translator preferences.",
+      );
+    }
+    setTranslatorSelectionReady(true);
+  }, [
+    registeredTranslators,
+    selectedTranslation,
+    translatorSelectionReady,
+    translatorsApiConfigured,
+    translatorsError,
+    translatorsLoading,
+  ]);
 
   useEffect(() => {
     try { writeQuranBookmarks(bookmarks); }
@@ -283,6 +359,40 @@ export function SurahRead({ go, isLoggedIn, onRequireAuthentication }: { go: (r:
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [navOpen, translationOpen]);
+
+  const openTranslationPanel = () => {
+    setDraftTranslatorIds([...selectedTranslatorIds]);
+    setTranslationSearch("");
+    setTranslationOpen(true);
+  };
+  const getPublishedTranslationsFor = (number: number, referenceSurah = chapterNumber) =>
+    selectQuranAyahTranslations(
+      publishedTranslations,
+      selectedTranslatorIds,
+      registeredTranslators,
+      referenceSurah,
+      number,
+    );
+  const applyTranslatorSelection = () => {
+    if (!translatorsApiConfigured || translatorsLoading || translatorsError) {
+      setTranslationOpen(false);
+      return;
+    }
+    const availableIds = new Set(registeredTranslators.map((translator) => String(translator.id)));
+    const nextIds = [...new Set(draftTranslatorIds)].filter((id) => availableIds.has(id));
+    setSelectedTranslatorIds(nextIds);
+    try {
+      writeQuranTranslatorSelection(nextIds);
+      setTranslatorPreferenceError(null);
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : "Could not save Quran translator preferences.";
+      setTranslatorPreferenceError(message);
+      setNotice(message);
+    }
+    setTranslationOpen(false);
+  };
 
   const updateLocation = (nextSurah: number, nextAyah: number, replace = false) => {
     setJuzNumber(null);
@@ -351,16 +461,27 @@ export function SurahRead({ go, isLoggedIn, onRequireAuthentication }: { go: (r:
     const translation = content?.translations[selectedTranslation];
     return { content, translation };
   };
+  const translationLinesFor = (number: number, referenceSurah = chapterNumber) => {
+    const available = getPublishedTranslationsFor(number, referenceSurah);
+    if (available.length) {
+      return available.map((translation) => `${translation.text} — ${translation.translatorName}`);
+    }
+    if (!hasApiUrl()) {
+      const { translation } = ayahTextFor(number, referenceSurah);
+      return translation ? [translation] : [];
+    }
+    return [];
+  };
   const copyAyah = async (number: number, referenceSurah = chapterNumber) => {
-    const { content, translation } = ayahTextFor(number, referenceSurah);
-    const text = [content?.arabic, translation].filter(Boolean).join("\n");
+    const { content } = ayahTextFor(number, referenceSurah);
+    const text = [content?.arabic, ...translationLinesFor(number, referenceSurah)].filter(Boolean).join("\n");
     if (!text) { setNotice("This Ayah has no text in the local mock dataset to copy."); return; }
     try { await navigator.clipboard.writeText(text); setNotice(`${referenceSurah}:${number} copied.`); }
     catch { setNotice("Clipboard access is unavailable in this browser."); }
   };
   const shareAyah = async (number: number, referenceSurah = chapterNumber) => {
-    const { content, translation } = ayahTextFor(number, referenceSurah);
-    const text = [content?.arabic, translation, `${referenceSurah}:${number}`].filter(Boolean).join("\n");
+    const { content } = ayahTextFor(number, referenceSurah);
+    const text = [content?.arabic, ...translationLinesFor(number, referenceSurah), `${referenceSurah}:${number}`].filter(Boolean).join("\n");
     if (!text) { setNotice("This Ayah has no text in the local mock dataset to share."); return; }
     try {
       if (navigator.share) await navigator.share({ title: `${referenceSurah}:${number} - ${surahData[referenceSurah - 1][1]}`, text });
@@ -452,11 +573,11 @@ export function SurahRead({ go, isLoggedIn, onRequireAuthentication }: { go: (r:
     </div>
     <div className="quran-reader-body">
       <section className="quran-reader-content">
-        <div className="reader-toolbar-actions"><button className="reader-nav-open" onClick={() => { setNavTab("Surah"); setNavOpen(true); }}><Icon name="menu" size={17} /> <LocalizedText text={"Browse"} /></button><button className="reader-translation-open" onClick={() => setTranslationOpen(true)}><LocalizedText text={"Translation:"} trailing=" " />{translationResources.find(item => item.languageCode === selectedTranslation)?.language}<span>⌄</span></button></div>
+        <div className="reader-toolbar-actions"><button className="reader-nav-open" onClick={() => { setNavTab("Surah"); setNavOpen(true); }}><Icon name="menu" size={17} /> <LocalizedText text={"Browse"} /></button><button className="reader-translation-open" onClick={openTranslationPanel}><LocalizedText text={"Translations"} /> ({selectedTranslators.length})<span>⌄</span></button></div>
         <section className="reader-chapter-card">
           {juzNumber === null && <strong className="reader-chapter-arabic" lang="ar" dir="rtl">{arabicName}</strong>}
           <div className="reader-chapter-copy">{juzNumber === null ? <><span><LocalizedText text={"Surah"} trailing=" " />{chapterNumber}</span><h1>{transliteratedName} <em>{surahMeanings[chapterNumber - 1]}</em></h1><p>{revelation} • {ayahCount} <LocalizedText text={hasApiUrl() ? "Ayat" : "Ayat • Local reader mock data"} /></p></> : <><span><LocalizedText text={"Juz / Para"} trailing=" " />{juzNumber}</span><h1><LocalizedText text={"Para"} trailing=" " />{juzNumber}</h1><p>{juzEntries.find((entry) => entry.number === juzNumber)?.startRef || "Boundary metadata unavailable"}{juzEntries.find((entry) => entry.number === juzNumber)?.endRef ? ` – ${juzEntries.find((entry) => entry.number === juzNumber)?.endRef}` : ""}</p></>}</div>
-          <div className="reader-chapter-actions"><button onClick={() => startAudio()}><Icon name="play" size={15} /> <LocalizedText text={"Listen"} /></button><button onClick={() => setInfoOpen(open => !open)}><span aria-hidden="true">ⓘ</span> <LocalizedText text={"Info"} /></button><button className="translation-desktop" onClick={() => setTranslationOpen(true)}><LocalizedText text={"Translation:"} trailing=" " />{translationResources.find(item => item.languageCode === selectedTranslation)?.name} <span>⌄</span></button></div>
+          <div className="reader-chapter-actions"><button onClick={() => startAudio()}><Icon name="play" size={15} /> <LocalizedText text={"Listen"} /></button><button onClick={() => setInfoOpen(open => !open)}><span aria-hidden="true">ⓘ</span> <LocalizedText text={"Info"} /></button><button className="translation-desktop" onClick={openTranslationPanel}><LocalizedText text={"Translations"} trailing=" " />{selectedLanguageSummary} <span>⌄</span></button></div>
         </section>
         {infoOpen && <div className="reader-info-panel"><b><LocalizedText text={juzNumber === null ? "About this Surah" : "About this Juz"} /></b>{juzNumber === null ? <><span><LocalizedText text={"Chapter"} trailing=" " />{chapterNumber} <LocalizedText text={"in canonical order"} /></span><span>{revelation} <LocalizedText text={"revelation •"} trailing=" " />{ayahCount} <LocalizedText text={"Ayat"} /></span><span><LocalizedText text={"English meaning:"} trailing=" " />{surahMeanings[chapterNumber - 1]}</span></> : <span><LocalizedText text={"Juz verses follow canonical Surah and Ayah order."} /></span>}</div>}
         {juzNumber !== null && juzLoading && <div className="reader-data-note" role="status"><Icon name="book" size={16} /><p><LocalizedText text={"Loading published Ayahs for this Juz…"} /></p></div>}
@@ -464,20 +585,26 @@ export function SurahRead({ go, isLoggedIn, onRequireAuthentication }: { go: (r:
         {juzNumber !== null && !juzApiConfigured && <div className="reader-data-note" role="note"><Icon name="book" size={16} /><p><LocalizedText text={"Connect the Quran API to read Juz ranges. Local Quran data is an incomplete prototype sample."} /></p></div>}
         {juzNumber === null && chapterLoading && <div className="reader-data-note" role="status"><Icon name="book" size={16} /><p><LocalizedText text={"Loading published Ayahs…"} /></p></div>}
         {juzNumber === null && chapterError && <div className="reader-data-note" role="alert"><Icon name="book" size={16} /><p><LocalizedText text={"Ayahs could not be loaded."} /> {chapterError} <button className="clear-filter-btn" onClick={retryChapter}><LocalizedText text={"Retry"} /></button></p></div>}
+        {publishedTranslationsLoading && <div className="reader-data-note" role="status"><Icon name="book" size={16} /><p><LocalizedText text={"Loading selected translations…"} /></p></div>}
+        {publishedTranslationsError && <div className="reader-data-note" role="alert"><Icon name="book" size={16} /><p><LocalizedText text={"Selected translations could not be loaded."} /> {publishedTranslationsError} <button className="clear-filter-btn" onClick={retryPublishedTranslations}><LocalizedText text={"Retry"} /></button></p></div>}
         {juzNumber === null && <div className="reader-data-note" role="note"><Icon name="book" size={16} /><p><LocalizedText text={hasApiUrl() ? "Only published Ayahs returned by the Quran service are shown." : "Ayah numbering follows chapter metadata. Local text is only a prototype sample and is not a complete Quran."} /></p></div>}
         <div className={`reader-ayah-list ${mode === "reading" ? "reading-mode" : "verse-mode"}`}>
           {readerAyahRows.map(({ surahNumber: rowSurah, ayahNumber: number }, index) => {
             const reference = rowSurah * 1000 + number;
             const { content, translation } = ayahTextFor(number, rowSurah);
-            const resource = translationResources.find(item => item.languageCode === selectedTranslation);
+            const ayahTranslations = getPublishedTranslationsFor(number, rowSurah);
             const isBookmarked = bookmarks.includes(reference);
             const priorSurah = readerAyahRows[index - 1]?.surahNumber;
             return <article id={`ayah-${rowSurah}-${number}`} key={`${rowSurah}:${number}`} className={`reader-ayah ${highlightedAyah === number && chapterNumber === rowSurah ? "is-highlighted" : ""} ${!content ? "content-unavailable" : ""}`}>
               {juzNumber !== null && rowSurah !== priorSurah && <p className="reader-ayah-context"><LocalizedText text={"Surah"} trailing=" " />{rowSurah} · {getSurahLabel(rowSurah)}</p>}
               <div className="reader-ayah-actions"><div><span className="ayah-reference">{rowSurah}:{number}</span><button aria-label={`Play Ayah ${rowSurah}:${number}`} onClick={() => startAudio(number, rowSurah)}>{audioPlaying && ayahNumber === number && chapterNumber === rowSurah ? <span>Ⅱ</span> : <Icon name="play" size={17} />}</button><button aria-label={`${isBookmarked ? "Remove bookmark from" : "Bookmark"} Ayah ${rowSurah}:${number}`} className={isBookmarked ? "bookmarked" : ""} onClick={() => toggleBookmark(reference, rowSurah, number)}><Icon name="heart" size={17} /></button></div><div><button aria-label={`Copy Ayah ${rowSurah}:${number}`} onClick={() => void copyAyah(number, rowSurah)}><Icon name="copy" size={17} /></button><button aria-label={`Share Ayah ${rowSurah}:${number}`} onClick={() => void shareAyah(number, rowSurah)}><Icon name="share" size={17} /></button></div></div>
               {content?.arabic ? <p className="reader-arabic" lang="ar" dir="rtl" translate="no">{content.arabic}</p> : <p className="ayah-unavailable"><LocalizedText text={"Quran text unavailable in the local mock data."} /></p>}
-              {translation ? <p className={`reader-translation-text language-${selectedTranslation}`} lang={selectedTranslation} dir={selectedTranslation === "ur" ? "rtl" : "ltr"}>{translation}</p> : <p className="translation-unavailable">{content ? `No ${resource?.language || "selected language"} translation is available for this Ayah.` : "Translation unavailable for this Ayah in the local mock data."}</p>}
-              {content && <small className="content-attribution"><LocalizedText text={"Existing prototype sample • translation attribution not recorded"} /></small>}
+              {ayahTranslations.length > 0
+                ? <div className="reader-translation-list">{ayahTranslations.map((item) => <div key={`${item.languageCode}:${item.translatorId}`} className={`reader-translation-block language-${item.languageCode}`} lang={item.languageCode} dir={item.languageCode === "ur" ? "rtl" : "ltr"}><p className="reader-translation-text">{item.text}</p><small className="reader-translation-attribution" dir="ltr">{item.translatorName} · {translationLanguageNames[item.languageCode]}</small></div>)}</div>
+                : !hasApiUrl() && (translation
+                  ? <p className={`reader-translation-text language-${selectedTranslation}`} lang={selectedTranslation} dir={selectedTranslation === "ur" ? "rtl" : "ltr"}>{translation}</p>
+                  : <p className="translation-unavailable">{content ? "No selected language translation is available for this Ayah." : "Translation unavailable for this Ayah in the local mock data."}</p>)}
+              {!hasApiUrl() && content && <small className="content-attribution"><LocalizedText text={"Existing prototype sample • translation attribution not recorded"} /></small>}
             </article>;
           })}
           {juzNumber !== null && !juzLoading && !juzError && juzApiConfigured && readerAyahRows.length === 0 && <div className="empty"><Icon name="book" size={32} /><h3><LocalizedText text={"No published Ayahs are available for this Juz."} /></h3><p><LocalizedText text={"Quran content coverage is incomplete or no verses in this range are published yet."} /></p></div>}
@@ -506,7 +633,32 @@ export function SurahRead({ go, isLoggedIn, onRequireAuthentication }: { go: (r:
       {navTab === "Page" && <div className="page-navigation"><h3><LocalizedText text={"Madani Mushaf sample mapping"} /></h3><p><LocalizedText text={"Only two local page-start mappings are included. This is not a complete page index."} /></p>{mushafPageStarts.map(start => <button key={start.page} className={mappedPage === start.page ? "selected" : ""} onClick={() => selectPage(start.page)}><span><LocalizedText text={"Page"} trailing=" " />{start.page}</span><small><LocalizedText text={"Starts at"} trailing=" " />{start.surah}:{start.ayah} · {surahData[start.surah - 1][1]}</small><Icon name="chevron" size={16} /></button>)}</div>}
     </aside></div>}
 
-    {translationOpen && <div className="quran-drawer-backdrop translation-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) setTranslationOpen(false); }}><aside className="quran-drawer translation-drawer" role="dialog" aria-modal="true" aria-label={interfaceAttributeText("Translations")}><div className="drawer-heading"><div><small><LocalizedText text={"DISPLAY SETTINGS"} /></small><h2><LocalizedText text={"Translations"} /></h2></div><button aria-label={interfaceAttributeText("Close translations")} onClick={() => setTranslationOpen(false)}><Icon name="x" /></button></div><label className="drawer-search"><Icon name="search" size={17} /><input autoFocus value={translationSearch} onChange={event => setTranslationSearch(event.target.value)} placeholder={interfaceAttributeText("Search translations")} /></label><div className="translation-options">{[...new Set(filteredTranslations.map(resource => resource.language))].map(language => <section key={language}><h3>{language}</h3>{filteredTranslations.filter(resource => resource.language === language).map(resource => <label key={resource.id} className={`translation-option ${selectedTranslation === resource.languageCode ? "selected" : ""}`}><input type="radio" name="translation" checked={selectedTranslation === resource.languageCode} onChange={() => setSelectedTranslation(resource.languageCode)} /><span><b>{resource.name}</b><small>{resource.attribution}</small></span><span className="translation-check">{selectedTranslation === resource.languageCode ? "Selected" : ""}</span></label>)}</section>)}{!filteredTranslations.length && <p className="drawer-empty"><LocalizedText text={"No translations match that search."} /></p>}</div><button className="drawer-done" onClick={() => setTranslationOpen(false)}><LocalizedText text={"Done"} /></button></aside></div>}
+    {translationOpen && <div className="quran-drawer-backdrop translation-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) setTranslationOpen(false); }}><aside className="quran-drawer translation-drawer" role="dialog" aria-modal="true" aria-label={interfaceAttributeText("Translations")}><div className="drawer-heading"><div><small><LocalizedText text={"DISPLAY SETTINGS"} /></small><h2><LocalizedText text={"Translations"} /></h2></div><button aria-label={interfaceAttributeText("Close translations")} onClick={() => setTranslationOpen(false)}><Icon name="x" /></button></div><label className="drawer-search"><Icon name="search" size={17} /><input autoFocus value={translationSearch} onChange={event => setTranslationSearch(event.target.value)} placeholder={interfaceAttributeText("Search translators by name or language")} /></label>
+      <div className="translation-options" aria-live="polite">
+        {translatorPreferenceError && <p className="drawer-state-error" role="alert">{translatorPreferenceError}</p>}
+        {translatorsLoading && <p className="drawer-empty" role="status"><LocalizedText text={"Loading registered translators…"} /></p>}
+        {!translatorsLoading && translatorsError && <div className="drawer-state-error" role="alert"><p><LocalizedText text={"Registered translators could not be loaded."} /> {translatorsError}</p><button className="clear-filter-btn" onClick={retryTranslators}><LocalizedText text={"Retry"} /></button></div>}
+        {!translatorsLoading && !translatorsError && !translatorsApiConfigured && <p className="drawer-empty"><LocalizedText text={"Connect the Quran API to load registered translators."} /></p>}
+        {!translatorsLoading && !translatorsError && translatorsApiConfigured && translationSearch.trim() && !filteredTranslators.length && <p className="drawer-empty"><LocalizedText text={"No translators match that search."} /></p>}
+        {!translatorsLoading && !translatorsError && translatorsApiConfigured && !translationSearch.trim() && translatorGroups.map(({ code, label: language, translators: languageTranslators }) =>
+          <section key={code}><h3>{language}<span className="translator-group-count">{languageTranslators.length}</span></h3>{languageTranslators.length
+            ? languageTranslators.map((translator) => {
+              const translatorId = String(translator.id);
+              const checked = draftTranslatorIds.includes(translatorId);
+              return <label key={translatorId} className={`translation-option ${checked ? "selected" : ""}`}><input type="checkbox" checked={checked} aria-label={`${translator.name}, ${language}`} onChange={(event) => setDraftTranslatorIds((current) => event.target.checked ? [...new Set([...current, translatorId])] : current.filter((id) => id !== translatorId))} /><span><b>{translator.name}</b><small>{language} · {translator.languageCode}</small></span><span className="translation-check">{checked ? <LocalizedText text={"Selected"} /> : ""}</span></label>;
+            })
+            : <p className="drawer-empty language-empty"><LocalizedText text={`No registered ${language} translators are available.`} /></p>}</section>,
+        )}
+        {!translatorsLoading && !translatorsError && translatorsApiConfigured && translationSearch.trim() && filteredTranslators.length > 0 && filteredTranslatorGroups.filter(({ translators: group }) => group.length > 0).map(({ code, label: language, translators: group }) =>
+          <section key={code}><h3>{language}<span className="translator-group-count">{group.length}</span></h3>{group.map((translator) => {
+            const translatorId = String(translator.id);
+            const checked = draftTranslatorIds.includes(translatorId);
+            return <label key={translatorId} className={`translation-option ${checked ? "selected" : ""}`}><input type="checkbox" checked={checked} aria-label={`${translator.name}, ${language}`} onChange={(event) => setDraftTranslatorIds((current) => event.target.checked ? [...new Set([...current, translatorId])] : current.filter((id) => id !== translatorId))} /><span><b>{translator.name}</b><small>{language} · {translator.languageCode}</small></span><span className="translation-check">{checked ? <LocalizedText text={"Selected"} /> : ""}</span></label>;
+          })}</section>,
+        )}
+      </div>
+      <button className="drawer-done" onClick={applyTranslatorSelection} disabled={translatorsLoading || Boolean(translatorsError) || !translatorsApiConfigured}><LocalizedText text={"Done"} /></button>
+    </aside></div>}
 
     <audio
       ref={audioRef}

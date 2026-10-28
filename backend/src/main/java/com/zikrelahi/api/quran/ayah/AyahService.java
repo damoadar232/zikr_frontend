@@ -13,6 +13,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -126,13 +129,66 @@ public class AyahService {
             throw new IllegalArgumentException(
                     "Translation language '" + langCode + "' is not supported. Use en, hi, or ur.");
         }
-        return translationRepository
+        Map<Integer, PublicAyahDto> ayahs = new LinkedHashMap<>();
+        translationRepository
                 .findPublishedAyahsBySurahAndLanguage(
                         (short) surahNumber, language, ContentStatus.PUBLISHED)
                 .stream()
-                .map(row -> PublicAyahDto.from(
-                        (Ayah) row[0], (Translation) row[1], (String) row[2]))
+                .forEach(row -> {
+                    Ayah ayah = (Ayah) row[0];
+                    ayahs.putIfAbsent((int) ayah.getAyahNumber(), PublicAyahDto.from(
+                            ayah, (Translation) row[1], (String) row[2]));
+                });
+        return List.copyOf(ayahs.values());
+    }
+
+    /**
+     * Returns only published translation rows for the requested languages.
+     * Translator IDs are included so reader preferences never rely on names.
+     */
+    @Transactional(readOnly = true)
+    public List<PublicAyahTranslationDto> listPublishedTranslations(
+            int surahNumber, List<String> languageCodes) {
+        if (surahNumber < 1 || surahNumber > 114) {
+            throw new ResourceNotFoundException(
+                    "Surah " + surahNumber + " does not exist.");
+        }
+        surahRepository.findByNumberAndStatus((short) surahNumber, ContentStatus.PUBLISHED)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Surah " + surahNumber + " is not yet published."));
+
+        List<LanguageCode> languages = parseLanguages(languageCodes);
+        if (languages.isEmpty()) return List.of();
+
+        return translationRepository.findPublishedTranslationsBySurahAndLanguages(
+                        (short) surahNumber, languages, ContentStatus.PUBLISHED)
+                .stream()
+                .map(AyahService::toPublicTranslation)
                 .toList();
+    }
+
+    private static List<LanguageCode> parseLanguages(List<String> languageCodes) {
+        if (languageCodes == null) return List.of();
+        LinkedHashSet<LanguageCode> languages = new LinkedHashSet<>();
+        for (String code : languageCodes) {
+            try {
+                languages.add(LanguageCode.valueOf(code));
+            } catch (IllegalArgumentException | NullPointerException ex) {
+                throw new IllegalArgumentException(
+                        "Translation languages must be en, hi, or ur.");
+            }
+        }
+        return List.copyOf(languages);
+    }
+
+    private static PublicAyahTranslationDto toPublicTranslation(Object[] row) {
+        return new PublicAyahTranslationDto(
+                ((Number) row[0]).intValue(),
+                ((Number) row[1]).intValue(),
+                ((LanguageCode) row[2]).name(),
+                (Long) row[3],
+                (String) row[4],
+                (String) row[5]);
     }
 
     // ─── Internal helpers ─────────────────────────────────────────────────────

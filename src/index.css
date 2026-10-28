@@ -4415,15 +4415,49 @@ html[data-theme="dark"] .detail-meta-item {
     line-height: 1.9
 }
 
+.reader-translation-block.language-ur .reader-translation-text,
 .reader-translation-text.language-ur {
     font-family: var(--urdu), serif;
     font-size: calc((20px) * var(--interface-scale, 1));
     line-height: 2.2
 }
 
+.reader-translation-block.language-hi .reader-translation-text,
 .reader-translation-text.language-hi,
 .reader-translation-text.language-ta {
     font-family: "Noto Sans Devanagari", "Noto Sans Tamil", var(--sans)
+}
+
+.reader-translation-list {
+    display: grid;
+    gap: 12px;
+    margin-top: 12px
+}
+
+.reader-translation-block {
+    min-width: 0;
+    padding: 11px 14px;
+    border-left: 2px solid #d5e4d9;
+    border-radius: 0 6px 6px 0;
+    background: #f7faf8
+}
+
+.reader-translation-block[dir="rtl"] {
+    border-right: 2px solid #d5e4d9;
+    border-left: 0;
+    border-radius: 6px 0 0 6px
+}
+
+.reader-translation-block .reader-translation-text {
+    margin: 0
+}
+
+.reader-translation-attribution {
+    display: block;
+    margin-top: 5px;
+    color: #74827c;
+    font-size: calc((11px) * var(--interface-scale, 1));
+    text-align: start
 }
 
 .content-attribution,
@@ -4892,10 +4926,37 @@ html[data-theme="dark"] .detail-meta-item {
     cursor: pointer
 }
 
+.translation-option.selected {
+    border-radius: 6px;
+    background: #f3f8f4
+}
+
 .translation-option input {
     width: 17px;
     height: 17px;
     accent-color: var(--green)
+}
+
+.translator-group-count {
+    margin-left: 7px;
+    color: #829089;
+    font-size: calc((11px) * var(--interface-scale, 1));
+    font-weight: 400
+}
+
+.language-empty {
+    margin: 4px 0 10px;
+    padding: 8px 4px
+}
+
+.drawer-state-error {
+    padding: 12px 4px;
+    color: #823d31;
+    font-size: calc((12px) * var(--interface-scale, 1))
+}
+
+.drawer-state-error p {
+    margin: 0 0 10px
 }
 
 .translation-option>span:nth-of-type(1) {
@@ -8104,6 +8165,888 @@ html[data-theme="dark"] .spotify-track-card-footer a {
 
     .admin-api-heading-copy {
         flex-basis: 100%
+    }
+}
+
+.admin-quran-management {
+    display: grid;
+    gap: 24px;
+    min-width: 0;
+    padding: 4px 0 28px
+}
+
+.admin-quran-heading,
+.admin-quran-section-heading,
+.admin-quran-detail-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px
+}
+
+.admin-quran-heading {
+    padding: 24px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--cream)
+}
+
+.admin-quran-heading small,
+.admin-quran-detail-heading small {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--green);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .12em
+}
+
+.admin-quran-heading h2,
+.admin-quran-detail-heading h2 {
+    margin: 0 0 8px;
+    font-family: var(--serif);
+    font-size: clamp(1.7rem, 3vw, 2.4rem)
+}
+
+.admin-quran-heading p,
+.admin-quran-detail-heading p,
+.admin-quran-section-heading p {
+    margin: 0;
+    color: var(--muted)
+}
+
+.admin-quran-total {
+    display: grid;
+    min-width: 128px;
+    padding: 12px 18px;
+    border-left: 1px solid var(--line);
+    text-align: center
+}
+
+.admin-quran-total strong {
+    color: var(--green);
+    font-family: var(--serif);
+    font-size: 32px;
+    line-height: 1.15
+}
+
+.admin-quran-total span {
+    color: var(--muted);
+    font-size: 12px
+}
+
+.admin-quran-surah-section,
+.admin-quran-translators {
+    min-width: 0;
+    padding: 22px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--white)
+}
+
+.admin-quran-section-heading {
+    margin-bottom: 18px
+}
+
+.admin-quran-section-heading h3,
+.admin-quran-readonly-list h3 {
+    margin: 0 0 4px;
+    font-family: var(--serif);
+    font-size: 23px
+}
+
+.admin-quran-search {
+    flex: 0 1 360px
+}
+
+.admin-quran-search input {
+    width: 100%;
+    min-height: 44px;
+    padding: 9px 13px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--white);
+    color: var(--text)
+}
+
+.admin-quran-table-wrap {
+    max-width: 100%;
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: 7px
+}
+
+.admin-quran-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left
+}
+
+.admin-quran-table th,
+.admin-quran-table td {
+    padding: 12px 11px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: middle
+}
+
+.admin-quran-table th {
+    background: var(--cream);
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    white-space: nowrap
+}
+
+.admin-quran-table td {
+    font-size: 13px
+}
+
+.admin-quran-table tbody tr:last-child td {
+    border-bottom: 0
+}
+
+.admin-quran-table tbody tr:hover {
+    background: color-mix(in srgb, var(--cream) 45%, transparent)
+}
+
+.admin-quran-arabic {
+    font-family: var(--arabic);
+    font-size: 20px !important;
+    white-space: nowrap
+}
+
+.admin-quran-actions {
+    white-space: nowrap
+}
+
+.admin-quran-actions button,
+.admin-quran-detail-heading>button,
+.admin-quran-state button,
+.admin-quran-notice button {
+    min-height: 36px;
+    padding: 7px 11px;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: var(--white);
+    color: var(--text);
+    font-weight: 600
+}
+
+.admin-quran-actions button + button {
+    margin-left: 6px
+}
+
+.admin-quran-actions button:hover,
+.admin-quran-detail-heading>button:hover,
+.admin-quran-state button:hover,
+.admin-quran-notice button:hover {
+    border-color: var(--green);
+    color: var(--green)
+}
+
+.admin-quran-state {
+    padding: 24px;
+    border: 1px dashed var(--line);
+    border-radius: 7px;
+    color: var(--muted);
+    text-align: center
+}
+
+.admin-quran-state button + button {
+    margin-left: 8px
+}
+
+.admin-quran-notice {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin: 14px 0;
+    padding: 12px;
+    border: 1px solid currentColor;
+    border-radius: 6px
+}
+
+.admin-quran-detail-heading {
+    align-items: flex-start;
+    padding: 18px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--cream)
+}
+
+.admin-quran-detail-heading>div {
+    flex: 1;
+    min-width: 0
+}
+
+.admin-quran-detail-heading h2 span {
+    margin-inline-start: 8px;
+    font-family: var(--arabic);
+    font-size: .9em
+}
+
+.admin-quran-readonly-list {
+    display: grid;
+    gap: 12px
+}
+
+.admin-quran-readonly-ayah {
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background: var(--white)
+}
+
+.admin-quran-readonly-ayah>div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px
+}
+
+.admin-quran-readonly-ayah p {
+    margin: 14px 0 0;
+    font-family: var(--arabic);
+    font-size: 26px;
+    line-height: 1.8;
+    white-space: pre-wrap
+}
+
+.admin-quran-translator-form {
+    margin-top: 20px
+}
+
+.admin-quran-translator-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    margin-top: 16px
+}
+
+.admin-quran-translator-fields .btn {
+    align-self: end
+}
+
+html[data-theme="dark"] .admin-quran-heading,
+html[data-theme="dark"] .admin-quran-detail-heading,
+html[data-theme="dark"] .admin-quran-table th {
+    background: #24231f
+}
+
+html[data-theme="dark"] .admin-quran-surah-section,
+html[data-theme="dark"] .admin-quran-translators,
+html[data-theme="dark"] .admin-quran-readonly-ayah,
+html[data-theme="dark"] .admin-quran-search input,
+html[data-theme="dark"] .admin-quran-actions button,
+html[data-theme="dark"] .admin-quran-detail-heading>button,
+html[data-theme="dark"] .admin-quran-state button,
+html[data-theme="dark"] .admin-quran-notice button {
+    background: #1d1c19;
+    color: #eee8dc
+}
+
+html[data-theme="dark"] .admin-quran-table tbody tr:hover {
+    background: #282620
+}
+
+@media (max-width: 900px) {
+    .admin-quran-table,
+    .admin-quran-table tbody,
+    .admin-quran-table tr,
+    .admin-quran-table td {
+        display: block;
+        width: 100%
+    }
+
+    .admin-quran-table thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap
+    }
+
+    .admin-quran-table tbody {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        padding: 12px
+    }
+
+    .admin-quran-table tbody tr {
+        min-width: 0;
+        padding: 8px 12px;
+        border: 1px solid var(--line);
+        border-radius: 7px
+    }
+
+    .admin-quran-table td {
+        display: grid;
+        grid-template-columns: minmax(100px, .75fr) minmax(0, 1.25fr);
+        gap: 10px;
+        padding: 8px 0;
+        border: 0;
+        overflow-wrap: anywhere
+    }
+
+    .admin-quran-table td::before {
+        content: attr(data-label);
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase
+    }
+
+    .admin-quran-table td.admin-quran-actions {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+        border-top: 1px solid var(--line)
+    }
+
+    .admin-quran-table td.admin-quran-actions::before {
+        margin-right: auto;
+        align-self: center
+    }
+
+    .admin-quran-actions button + button {
+        margin-left: 0
+    }
+}
+
+@media (max-width: 600px) {
+    .admin-quran-heading,
+    .admin-quran-section-heading,
+    .admin-quran-detail-heading {
+        align-items: stretch;
+        flex-direction: column
+    }
+
+    .admin-quran-total {
+        grid-template-columns: auto 1fr;
+        align-items: center;
+        justify-items: start;
+        gap: 10px;
+        border-top: 1px solid var(--line);
+        border-left: 0;
+        text-align: left
+    }
+
+    .admin-quran-search {
+        flex-basis: auto
+    }
+
+    .admin-quran-surah-section,
+    .admin-quran-translators,
+    .admin-quran-heading {
+        padding: 16px
+    }
+
+    .admin-quran-table tbody {
+        grid-template-columns: minmax(0, 1fr);
+        padding: 8px
+    }
+
+    .admin-quran-translator-fields {
+        grid-template-columns: minmax(0, 1fr)
+    }
+
+    .admin-quran-notice {
+        align-items: flex-start;
+        flex-direction: column
+    }
+}
+
+.admin-quran-surah-management {
+    gap: 18px
+}
+
+.admin-quran-translation-section {
+    display: grid;
+    gap: 16px;
+    min-width: 0;
+    padding: 20px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--white)
+}
+
+.admin-quran-translation-section .admin-quran-list-heading {
+    margin-bottom: 0
+}
+
+.admin-quran-language-selector {
+    width: min(100%, 300px);
+    margin: 0
+}
+
+.admin-quran-translation-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background: color-mix(in srgb, var(--cream) 45%, var(--white))
+}
+
+.admin-quran-translation-form h4,
+.admin-quran-translation-form .field:nth-of-type(3),
+.admin-quran-translation-form .admin-form-actions {
+    grid-column: 1 / -1
+}
+
+.admin-quran-translation-form h4 {
+    margin: 0;
+    font-family: var(--serif);
+    font-size: 19px
+}
+
+.admin-quran-translation-text {
+    min-width: 260px;
+    max-width: 560px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    line-height: 1.65
+}
+
+.admin-quran-ayah-table .admin-quran-arabic {
+    min-width: 220px;
+    max-width: 560px;
+    font-family: var(--arabic);
+    font-size: 20px;
+    line-height: 1.8;
+    overflow-wrap: anywhere
+}
+
+.admin-quran-ayah-detail .admin-quran-ayah-editor {
+    display: grid;
+    gap: 16px
+}
+
+.admin-quran-ayah-detail .admin-quran-editor-form {
+    grid-template-columns: repeat(3, minmax(0, 1fr))
+}
+
+.admin-quran-ayah-detail .admin-quran-editor-form>.admin-quran-arabic-field {
+    grid-column: 1 / -1
+}
+
+html[data-theme="dark"] .admin-quran-translation-section,
+html[data-theme="dark"] .admin-quran-translation-form {
+    background: #1d1c19
+}
+
+.admin-quran-list-heading,
+.admin-quran-editor-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 14px
+}
+
+.admin-quran-list-heading h3,
+.admin-quran-editor-heading h3 {
+    margin: 0 0 4px;
+    font-family: var(--serif);
+    font-size: 24px
+}
+
+.admin-quran-list-heading p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px
+}
+
+.admin-quran-ayah-list-v2 {
+    display: grid;
+    gap: 14px
+}
+
+.admin-quran-ayah-card {
+    min-width: 0;
+    padding: 18px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--white)
+}
+
+.admin-quran-ayah-card>header {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px
+}
+
+.admin-quran-ayah-card>header>strong {
+    color: var(--green);
+    font-size: 15px
+}
+
+.admin-quran-row-actions {
+    display: flex;
+    gap: 8px;
+    margin-left: auto
+}
+
+.admin-quran-row-actions button,
+.admin-quran-editor-heading>button,
+.admin-quran-translation-preview button {
+    min-height: 34px;
+    padding: 6px 10px;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: transparent;
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 600
+}
+
+.admin-quran-row-actions button:hover,
+.admin-quran-editor-heading>button:hover,
+.admin-quran-translation-preview button:hover {
+    border-color: var(--green);
+    color: var(--green)
+}
+
+.admin-quran-ayah-arabic {
+    margin: 16px 0;
+    padding: 14px 4px;
+    font-family: var(--arabic);
+    font-size: clamp(24px, 3vw, 34px);
+    line-height: 1.9;
+    overflow-wrap: anywhere
+}
+
+.admin-quran-preview-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px
+}
+
+.admin-quran-translation-preview {
+    min-width: 0;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--cream) 45%, var(--white))
+}
+
+.admin-quran-translation-preview>div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px
+}
+
+.admin-quran-translation-preview p {
+    min-height: 48px;
+    margin: 10px 0 6px;
+    overflow-wrap: anywhere
+}
+
+.admin-quran-translation-preview small,
+.admin-quran-no-translation {
+    color: var(--muted);
+    font-size: 11px
+}
+
+.admin-quran-translation-preview button {
+    display: block;
+    margin-top: 10px
+}
+
+.admin-quran-ayah-editor {
+    padding: 20px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--white)
+}
+
+.admin-quran-editor-heading {
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--line)
+}
+
+.admin-quran-editor-heading small {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--green);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .1em
+}
+
+.admin-quran-editor-form {
+    display: grid;
+    grid-template-columns: minmax(150px, .4fr) minmax(170px, .5fr) minmax(0, 1.6fr);
+    gap: 14px
+}
+
+.admin-quran-editor-form>.admin-quran-arabic-field {
+    grid-column: 1 / -1
+}
+
+.admin-quran-editor-form>.field textarea[lang="ar"] {
+    font-family: var(--arabic);
+    font-size: 24px;
+    line-height: 1.8
+}
+
+.admin-quran-translation-editor {
+    grid-column: 1 / -1;
+    min-width: 0;
+    margin: 0;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 7px
+}
+
+.admin-quran-translation-editor legend {
+    padding: 0 7px;
+    color: var(--green);
+    font-family: var(--serif);
+    font-size: 19px;
+    font-weight: 700
+}
+
+.admin-quran-translation-controls {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px
+}
+
+.admin-quran-editor-form>.admin-form-actions {
+    grid-column: 1 / -1
+}
+
+html[data-theme="dark"] .admin-quran-ayah-card,
+html[data-theme="dark"] .admin-quran-ayah-editor {
+    background: #1d1c19
+}
+
+html[data-theme="dark"] .admin-quran-translation-preview {
+    background: #24231f
+}
+
+html[data-theme="dark"] .admin-quran-row-actions button,
+html[data-theme="dark"] .admin-quran-editor-heading>button,
+html[data-theme="dark"] .admin-quran-translation-preview button {
+    color: #eee8dc
+}
+
+@media (max-width: 760px) {
+    .admin-quran-preview-grid {
+        grid-template-columns: minmax(0, 1fr)
+    }
+
+    .admin-quran-translation-preview p {
+        min-height: 0
+    }
+
+    .admin-quran-editor-form {
+        grid-template-columns: repeat(2, minmax(0, 1fr))
+    }
+
+    .admin-quran-editor-form>.field:nth-child(3) {
+        grid-column: 1 / -1
+    }
+
+    .admin-quran-ayah-detail .admin-quran-editor-form {
+        grid-template-columns: repeat(2, minmax(0, 1fr))
+    }
+}
+
+@media (max-width: 520px) {
+    .admin-quran-ayah-card,
+    .admin-quran-ayah-editor {
+        padding: 14px
+    }
+
+    .admin-quran-row-actions {
+        width: 100%;
+        margin-left: 0
+    }
+
+    .admin-quran-editor-form,
+    .admin-quran-translation-controls,
+    .admin-quran-translation-form,
+    .admin-quran-ayah-detail .admin-quran-editor-form {
+        grid-template-columns: minmax(0, 1fr)
+    }
+
+    .admin-quran-editor-form>.field:nth-child(3),
+    .admin-quran-translation-editor,
+    .admin-quran-editor-form>.admin-form-actions,
+    .admin-quran-translation-form h4,
+    .admin-quran-translation-form .field:nth-of-type(3),
+    .admin-quran-translation-form .admin-form-actions,
+    .admin-quran-ayah-detail .admin-quran-editor-form>.admin-quran-arabic-field {
+        grid-column: auto
+    }
+}
+
+.admin-quran-translators {
+    display: grid;
+    gap: 14px;
+    min-width: 0;
+    margin-top: 0;
+    padding: 22px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--white)
+}
+
+.admin-quran-translators .admin-quran-section-heading {
+    margin-bottom: 0
+}
+
+.admin-quran-translator-filter {
+    display: flex;
+    justify-content: flex-end
+}
+
+.admin-quran-translator-filter .field {
+    min-width: min(100%, 240px);
+    margin: 0
+}
+
+.admin-quran-translator-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background: color-mix(in srgb, var(--cream) 45%, var(--white))
+}
+
+.admin-quran-translator-form .field:nth-child(5),
+.admin-quran-translator-form .admin-form-actions {
+    grid-column: 1 / -1
+}
+
+.admin-quran-translator-form .admin-form-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px
+}
+
+.admin-quran-translator-link {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    color: var(--muted);
+    font-size: 13px
+}
+
+.admin-quran-translator-link button,
+.admin-quran-inline-link {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--green);
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 3px
+}
+
+.admin-quran-translator-overlay {
+    position: fixed;
+    z-index: 1000;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    background: rgb(0 0 0 / 55%)
+}
+
+.admin-quran-translator-dialog {
+    position: relative;
+    width: min(920px, 100%);
+    max-height: min(90vh, 900px);
+    overflow: auto;
+    padding: 26px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--cream);
+    box-shadow: 0 20px 70px rgb(0 0 0 / 28%)
+}
+
+.admin-quran-translator-dialog-close {
+    position: absolute;
+    z-index: 1;
+    top: 10px;
+    right: 12px;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    background: var(--white);
+    color: var(--text);
+    font-size: 24px;
+    line-height: 1
+}
+
+.admin-quran-translator-dialog-content {
+    margin: 0;
+    background: var(--white)
+}
+
+.admin-quran-editor-translation-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    align-self: end;
+    min-height: 42px;
+    color: var(--muted);
+    font-size: 12px
+}
+
+html[data-theme="dark"] .admin-quran-translators {
+    background: #1d1c19
+}
+
+html[data-theme="dark"] .admin-quran-translator-form {
+    background: #24231f
+}
+
+html[data-theme="dark"] .admin-quran-translator-dialog {
+    background: #171613
+}
+
+html[data-theme="dark"] .admin-quran-translator-dialog-close {
+    background: #24231f;
+    color: #eee8dc
+}
+
+@media (max-width: 600px) {
+    .admin-quran-translators {
+        padding: 16px
+    }
+
+    .admin-quran-translator-form {
+        grid-template-columns: minmax(0, 1fr)
+    }
+
+    .admin-quran-translator-form .field:nth-child(5),
+    .admin-quran-translator-form .admin-form-actions {
+        grid-column: auto
+    }
+
+    .admin-quran-translator-link {
+        align-items: flex-start;
+        flex-direction: column
+    }
+
+    .admin-quran-translator-dialog {
+        max-height: 94vh;
+        padding: 18px
     }
 
     .admin-lyric-details-heading {

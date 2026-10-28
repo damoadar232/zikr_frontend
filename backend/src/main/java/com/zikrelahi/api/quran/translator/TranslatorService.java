@@ -33,6 +33,26 @@ public class TranslatorService {
     }
 
     @Transactional(readOnly = true)
+    public List<PublicTranslatorDto> listPublic(String languageCode) {
+        List<Translator> translators;
+        if (languageCode == null || languageCode.isBlank()) {
+            translators = translatorRepository.findAllByOrderByLanguageCodeAscNameAscIdAsc();
+        } else {
+            LanguageCode language;
+            try {
+                language = LanguageCode.valueOf(languageCode);
+            } catch (IllegalArgumentException ex) {
+                throw new IllegalArgumentException(
+                        "Language '" + languageCode + "' is not supported. Use en, hi, or ur.");
+            }
+            translators = translatorRepository.findByLanguageCodeOrderByNameAsc(language);
+        }
+        return translators.stream()
+                .map(PublicTranslatorDto::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public TranslatorDto getById(Long id) {
         return translatorRepository.findById(id)
                 .map(TranslatorDto::from)
