@@ -1,6 +1,9 @@
 package com.zikrelahi.api.common;
 
 import com.zikrelahi.api.common.ConflictException;
+import com.zikrelahi.api.media.MediaConfigurationException;
+import com.zikrelahi.api.media.MediaStorageException;
+import com.zikrelahi.api.media.MediaValidationException;
 import com.zikrelahi.api.quran.importer.ImportResult;
 import com.zikrelahi.api.quran.importer.ImportValidationException;
 import jakarta.persistence.EntityNotFoundException;
@@ -83,6 +86,26 @@ public class GlobalExceptionHandler {
         public ResponseEntity<ApiResponse<Void>> handlePayloadTooLarge(MaxUploadSizeExceededException ex) {
                 return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
                                 .body(ApiResponse.error("PAYLOAD_TOO_LARGE", "Request body exceeds the allowed size."));
+        }
+
+        @ExceptionHandler(MediaValidationException.class)
+        public ResponseEntity<ApiResponse<Void>> handleInvalidMedia(MediaValidationException ex) {
+                return ResponseEntity.badRequest()
+                                .body(ApiResponse.error("INVALID_MEDIA_FILE", ex.getMessage()));
+        }
+
+        @ExceptionHandler(MediaConfigurationException.class)
+        public ResponseEntity<ApiResponse<Void>> handleMediaConfiguration(MediaConfigurationException ex) {
+                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                                .body(ApiResponse.error("MEDIA_UNAVAILABLE",
+                                                "Media storage is not configured or available."));
+        }
+
+        @ExceptionHandler(MediaStorageException.class)
+        public ResponseEntity<ApiResponse<Void>> handleMediaStorage(MediaStorageException ex) {
+                return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                                .body(ApiResponse.error("MEDIA_STORAGE_FAILED",
+                                                "The media storage operation could not be completed."));
         }
 
         @ExceptionHandler(UnauthorizedException.class)

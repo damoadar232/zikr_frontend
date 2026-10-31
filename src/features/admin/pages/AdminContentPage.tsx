@@ -16,6 +16,7 @@ import { LyricsEditor } from "../components/LyricsEditor";
 import { RecitersManagement } from "../components/RecitersManagement";
 import { AdminLyricsManagement } from "../components/AdminLyricsManagement";
 import { AdminArtistsManagement } from "../components/AdminArtistsManagement";
+import { AdminAudioManagement } from "../components/AdminAudioManagement";
 import { reciterProfiles, type ReciterProfile } from "../../lyrics/data/reciterProfiles";
 import { getUserFacingError, notify } from "../../../app/notifications/toastStore.js";
 
@@ -108,6 +109,7 @@ export function AdminContentPage({ edit = false, quranSection = false, go, isLog
     const [isSaving, setIsSaving] = useState(false);
     const [showReciterManagement, setShowReciterManagement] = useState(false);
     const [showArtistManagement, setShowArtistManagement] = useState(false);
+    const [showAudioManagement, setShowAudioManagement] = useState(false);
     const [showPortfolioManagement, setShowPortfolioManagement] = useState(false);
     const [reciterQuery, setReciterQuery] = useState("");
     const draftBaseline = useRef(JSON.stringify(getLyricsDraft()));
@@ -117,11 +119,13 @@ export function AdminContentPage({ edit = false, quranSection = false, go, isLog
             setMode("list");
             setKind("quranAyahs");
             setShowArtistManagement(false);
+            setShowAudioManagement(false);
             setShowReciterManagement(false);
             setShowPortfolioManagement(false);
         } else if (location.pathname.replace(/^\//, "") === "admin") {
             const section = new URLSearchParams(location.search).get("section");
             setShowArtistManagement(section === "artists");
+            setShowAudioManagement(section === "audio");
             setShowReciterManagement(section === "reciters");
             setShowPortfolioManagement(section === "portfolio");
             setKind("lyrics");
@@ -304,26 +308,29 @@ export function AdminContentPage({ edit = false, quranSection = false, go, isLog
     }
 
     return (
-        <main className="admin admin-content-management">
+        <main className={`admin admin-content-management${showAudioManagement ? " admin-audio-content-management" : ""}`}>
             <aside>
                 <Logo />
                 <small>CONTENT ADMIN · AUTHENTICATED API / LEGACY DEMO</small>
                 <nav className="admin-sidebar-nav" aria-label="Admin sections">
-                    <button className={!quranSection && mode === "dashboard" && !showReciterManagement && !showArtistManagement && !showPortfolioManagement ? "active" : ""} onClick={() => { setShowPortfolioManagement(false); setShowReciterManagement(false); setShowArtistManagement(false); setKind("lyrics"); setMode("dashboard"); go("admin"); }}><Icon name="grid" size={17} />Dashboard</button>
-                    <button className={!quranSection && kind === "lyrics" && mode !== "dashboard" && !showReciterManagement && !showArtistManagement && !showPortfolioManagement ? "active" : ""} onClick={() => go("admin?section=lyrics")}><Icon name="pen" size={17} />Lyrics Management</button>
-                    <button className={quranSection || !showReciterManagement && !showArtistManagement && !showPortfolioManagement && kind === "quranAyahs" && mode !== "dashboard" ? "active" : ""} onClick={() => { setShowPortfolioManagement(false); setShowReciterManagement(false); setShowArtistManagement(false); go("admin/quran"); }}><Icon name="book" size={17} />Quran Management</button>
+                    <button className={!quranSection && mode === "dashboard" && !showReciterManagement && !showArtistManagement && !showAudioManagement && !showPortfolioManagement ? "active" : ""} onClick={() => { setShowPortfolioManagement(false); setShowReciterManagement(false); setShowArtistManagement(false); setShowAudioManagement(false); setKind("lyrics"); setMode("dashboard"); go("admin"); }}><Icon name="grid" size={17} />Dashboard</button>
+                    <button className={!quranSection && kind === "lyrics" && mode !== "dashboard" && !showReciterManagement && !showArtistManagement && !showAudioManagement && !showPortfolioManagement ? "active" : ""} onClick={() => go("admin?section=lyrics")}><Icon name="pen" size={17} />Lyrics Management</button>
+                    <button className={quranSection || !showReciterManagement && !showArtistManagement && !showAudioManagement && !showPortfolioManagement && kind === "quranAyahs" && mode !== "dashboard" ? "active" : ""} onClick={() => { setShowPortfolioManagement(false); setShowReciterManagement(false); setShowArtistManagement(false); setShowAudioManagement(false); go("admin/quran"); }}><Icon name="book" size={17} />Quran Management</button>
                     <button className={!quranSection && showArtistManagement ? "active" : ""} onClick={() => go("admin?section=artists")}><Icon name="user" size={17} />Artist Management</button>
+                    <button className={!quranSection && showAudioManagement ? "active" : ""} onClick={() => go("admin?section=audio")}><Icon name="headphones" size={17} />Audio Management</button>
                     {/* <button className={!quranSection && showReciterManagement ? "active" : ""} onClick={() => go("admin?section=reciters")}><Icon name="user" size={17} />Legacy Reciters</button> */}
                     <button className={!quranSection && showPortfolioManagement ? "active" : ""} onClick={() => go("admin?section=portfolio")}><Icon name="grid" size={17} />Portfolio Management</button>
                 </nav>
                 <button className="admin-signout" onClick={() => onLogout?.()}><Icon name="x" size={17} />Sign out</button>
             </aside>
             <div className="admin-main">
-                <header><div><small>ADMINISTRATION</small><h1>{quranSection ? "Quran Management" : showArtistManagement ? "Artist Management" : showPortfolioManagement ? "Portfolio Management" : mode === "dashboard" ? "Content dashboard" : mode === "apiLyrics" ? "Lyrics Management" : `${kind === "lyrics" ? "Lyrics" : "Quran Ayah"} management`}</h1></div><span className="admin-demo-badge">{quranSection || (mode === "apiLyrics" && !showPortfolioManagement) || showArtistManagement || (kind === "quranAyahs" && mode !== "dashboard") ? "Authenticated API" : "Browser demo storage"}</span></header>
-                {mode !== "apiLyrics" && !quranSection && !showPortfolioManagement && !showArtistManagement && !(kind === "quranAyahs" && mode !== "dashboard") && <div className="admin-demo-warning" role="note">Changes in the legacy demo views persist in this browser only. They are not server records.</div>}
-                <ErrorMessage message={error} />
+                <header><div><small>ADMINISTRATION</small><h1>{quranSection ? "Quran Management" : showArtistManagement ? "Artist Management" : showAudioManagement ? "Audio Management" : showPortfolioManagement ? "Portfolio Management" : mode === "dashboard" ? "Content dashboard" : mode === "apiLyrics" ? "Lyrics Management" : `${kind === "lyrics" ? "Lyrics" : "Quran Ayah"} management`}</h1></div><span className="admin-demo-badge">{showAudioManagement ? "Preview data only" : quranSection || (mode === "apiLyrics" && !showPortfolioManagement) || showArtistManagement || (kind === "quranAyahs" && mode !== "dashboard") ? "Authenticated API" : "Browser demo storage"}</span></header>
+                {/* {mode !== "apiLyrics" && !quranSection && !showPortfolioManagement && !showArtistManagement && !(kind === "quranAyahs" && mode !== "dashboard") &&
+                    <div className="admin-demo-warning" role="note"></div>}
+                <ErrorMessage message={error} /> */}
 
                 {mode === "apiLyrics" && !showPortfolioManagement && !showArtistManagement && <AdminLyricsManagement />}
+                {showAudioManagement && <AdminAudioManagement />}
                 {quranSection && (selectedSurahNumber === undefined
                     ? <AdminQuranManagement onNavigate={(number, nextMode) => go(number === undefined
                         ? "admin/quran"
@@ -349,12 +356,16 @@ export function AdminContentPage({ edit = false, quranSection = false, go, isLog
                         />)}
                 {showArtistManagement && <AdminArtistsManagement />}
                 {showPortfolioManagement && <section className="admin-portfolio-blocked" role="status"><Icon name="grid" size={28} /><h2>Portfolio management needs backend support</h2><p>No Portfolio API or portfolio persistence model is included in this repository. This section is intentionally read-only rather than reporting browser-only changes as saved.</p><ul><li>Add authenticated list, create, edit, delete, and visibility endpoints.</li><li>Persist YouTube, Spotify, service, and project content types with publication state and display order.</li><li>Add a public endpoint that returns only published portfolio records.</li></ul><p>The required API contract is documented in <code>src/features/admin/ADMIN_API.md</code>.</p></section>}
-                {mode === "dashboard" && !quranSection && !showArtistManagement && !showPortfolioManagement && !showReciterManagement && <section className="admin-dashboard-content">
+                {mode === "dashboard" && !quranSection && !showArtistManagement && !showAudioManagement && !showPortfolioManagement && !showReciterManagement && <section className="admin-dashboard-content">
                     <div className="stat-grid"><article><span>{lyricRecords.filter((item) => item.status === "published").length}</span><small>Published lyrics</small></article><article><span>{lyricRecords.filter((item) => item.status === "draft").length}</span><small>Lyrics drafts</small></article><article><span>API</span><small>Quran records (load management)</small></article><article><span>API</span><small>Surah metadata (load management)</small></article></div>
-                    <div className="admin-content-shortcuts"><button onClick={() => openList("lyrics")}><b>Lyrics Management</b><span>View, search, edit, and publish server lyric records.</span></button><button onClick={() => go("admin/quran")}><b>Quran Management</b><span>Browse all Surahs and manage Ayahs and translations through authenticated APIs.</span></button><button onClick={() => { setShowArtistManagement(true); setError(""); }}><b>Artist Management</b><span>Manage API-backed artists and role assignments.</span></button><button onClick={() => setShowReciterManagement(true)}><b>Legacy Reciters</b><span>Manage legacy browser-demo reciter profiles.</span></button><button onClick={() => setShowPortfolioManagement(true)}><b>Portfolio Management</b><span>Portfolio CRUD is waiting for authenticated backend endpoints.</span></button></div>
+                    <div className="admin-content-shortcuts"><button onClick={() => openList("lyrics")}><b>Lyrics Management</b><span>View, search, edit, and publish server lyric records.</span></button><button onClick={() => go("admin/quran")}><b>Quran Management</b><span>Browse all Surahs and manage Ayahs and translations through authenticated APIs.</span></button>
+                        <button onClick={() => { setShowArtistManagement(true); setError(""); }}><b>Artist Management</b><span>Manage API-backed artists and role assignments.</span></button>
+                        <button onClick={() => go("admin?section=audio")}><b>Audio Management</b><span>Review audio tracks and prepare local previews for artist credits and media.</span></button>
+                        {/* <button onClick={() => setShowReciterManagement(true)}><b>Legacy Reciters</b><span>Manage legacy browser-demo reciter profiles.</span></button><button onClick={() => setShowPortfolioManagement(true)}><b>Portfolio Management</b><span>Portfolio CRUD is waiting for authenticated backend endpoints.</span></button> */}
+                    </div>
                 </section>}
 
-                {mode === "list" && kind === "lyrics" && !showArtistManagement && <section className="admin-table admin-record-list">
+                {mode === "list" && kind === "lyrics" && !showArtistManagement && !showAudioManagement && <section className="admin-table admin-record-list">
                     <div className="admin-list-toolbar"><label className="search-box admin-search"><Icon name="search" size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={kind === "lyrics" ? "Search lyrics" : "Search Surah or Ayah"} aria-label={kind === "lyrics" ? "Search lyrics" : "Search Quran records"} /></label><select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} aria-label="Filter by status"><option value="all">All statuses</option><option value="published">Published</option><option value="draft">Draft</option></select><button className="btn btn-primary" onClick={() => startCreate()}><Icon name="pen" size={16} />New record</button></div>
                     {visibleRecords.length ? <div className="admin-records">{visibleRecords.map((record) => <article key={record.id}>
                         <button className="admin-record-summary" onClick={() => { setSelectedId(record.id); setMode("detail"); }}><b>{kind === "lyrics" ? record.title || record.slug : `${surahData[record.surahNumber - 1]?.[1] || "Surah"} ${record.surahNumber}:${record.ayahNumber}`}</b><small>{record.id}</small><span className={`status ${record.status}`}>{record.status}</span></button>
@@ -362,14 +373,14 @@ export function AdminContentPage({ edit = false, quranSection = false, go, isLog
                     </article>)}</div> : <div className="admin-empty"><Icon name="search" size={24} /><b>{query || statusFilter !== "all" ? "No matching records" : "No records yet"}</b><span>{query || statusFilter !== "all" ? "Adjust the search or status filter." : "Create a record to begin."}</span></div>}
                 </section>}
 
-                {mode === "detail" && kind === "lyrics" && !showArtistManagement && selectedRecord && <section className="admin-detail form-card">
+                {mode === "detail" && kind === "lyrics" && !showArtistManagement && !showAudioManagement && selectedRecord && <section className="admin-detail form-card">
                     <div className="admin-detail-heading"><div><span className={`status ${selectedRecord.status}`}>{selectedRecord.status}</span><h2>{kind === "lyrics" ? selectedRecord.title : `${surahData[selectedRecord.surahNumber - 1]?.[1]} ${selectedRecord.surahNumber}:${selectedRecord.ayahNumber}`}</h2><small>{selectedRecord.id}</small></div><div><button onClick={() => startEdit(selectedRecord)}>Edit</button><button onClick={() => togglePublished(selectedRecord)}>{selectedRecord.status === "published" ? "Unpublish" : "Publish"}</button><button className="danger-action" onClick={() => deleteRecord(selectedRecord)}>Delete</button></div></div>
                     {kind === "lyrics" ? <><p><b>Reciters:</b> {getReciters(selectedRecord, reciterRecords).join(", ") || "Not supplied"}</p><p><b>Written by:</b> {selectedRecord.writer || poets.find((poet) => String(poet.id) === String(selectedRecord.writerId))?.name || "Not supplied"}</p>{selectedRecord.languageVersions?.map((version: any) => <section key={version.code} lang={version.code} dir={version.dir || "ltr"}><h3>{version.label}</h3>{isLyricDocument(version.document) ? <LyricDocumentView document={version.document} language={version.code} dir={version.dir || "ltr"} /> : <pre className="admin-preserved-text">{version.text}</pre>}</section>)}<p><b>Related video URLs:</b> {(selectedRecord.relatedVideos || []).map((video: any) => video.url).filter(Boolean).join(" · ") || "None"}</p></> : <><p className="admin-arabic-preview" lang="ar" dir="rtl">{selectedRecord.arabic || "Arabic text not supplied"}</p>{Object.entries(selectedRecord.translations || {}).map(([code, text]) => <p key={code} lang={code} dir={code === "ur" ? "rtl" : "ltr"}><b>{code.toUpperCase()}:</b> {String(text)}</p>)}</>}
                 </section>}
 
-                {mode === "detail" && kind === "lyrics" && !showArtistManagement && !selectedRecord && <div className="admin-empty"><b>Record unavailable</b><button onClick={() => setMode("list")}>Return to list</button></div>}
+                {mode === "detail" && kind === "lyrics" && !showArtistManagement && !showAudioManagement && !selectedRecord && <div className="admin-empty"><b>Record unavailable</b><button onClick={() => setMode("list")}>Return to list</button></div>}
 
-                {mode === "form" && kind === "lyrics" && !showArtistManagement && <form className="editor-form admin-content-form" onSubmit={handleSave}>
+                {mode === "form" && kind === "lyrics" && !showArtistManagement && !showAudioManagement && <form className="editor-form admin-content-form" onSubmit={handleSave}>
                     {kind === "lyrics" ? <>
                         <section className="form-card"><h2>Lyrics details</h2><label className="field"><span>Title *</span><input required value={draft.title} onChange={(event) => { const title = event.target.value; setDraft((current: any) => ({ ...current, title, slug: current.slug || slugifyLyricsTitle(title) })); }} /></label><label className="field"><span>Slug / URL identifier</span><input required value={draft.slug} onChange={(event) => setField("slug", slugifyLyricsTitle(event.target.value))} /></label>
                             <div className="field reciter-selector"><span>Reciters</span><label className="sr-only" htmlFor="reciter-search">Search reciters</label><input id="reciter-search" type="search" value={reciterQuery} onChange={(event) => setReciterQuery(event.target.value)} placeholder="Search reciters…" /><div className="reciter-selected-chips">{draft.reciterIds.map((id: string) => { const profile = reciterRecords.find((entry) => entry.id === id); return <span key={id}>{profile?.name || id}<button type="button" aria-label={`Remove ${profile?.name || id}`} onClick={() => setField("reciterIds", draft.reciterIds.filter((current: string) => current !== id))}>×</button></span>; })}{draft.legacyReciters.map((name: string) => <span key={name}>{name}<button type="button" aria-label={`Remove ${name}`} onClick={() => setField("legacyReciters", draft.legacyReciters.filter((current: string) => current !== name))}>×</button></span>)}</div><div className="reciter-option-list" role="group" aria-label="Available reciters">{reciterRecords.filter((profile) => (profile.status === "active" || draft.reciterIds.includes(profile.id)) && profile.name.toLowerCase().includes(reciterQuery.trim().toLowerCase())).map((profile) => <label key={profile.id}><input type="checkbox" checked={draft.reciterIds.includes(profile.id)} disabled={profile.status !== "active" && !draft.reciterIds.includes(profile.id)} onChange={(event) => setField("reciterIds", event.target.checked ? [...draft.reciterIds, profile.id] : draft.reciterIds.filter((id: string) => id !== profile.id))} />{profile.name}{profile.status === "inactive" ? " (inactive)" : ""}</label>)}</div>{!reciterRecords.length && <p className="form-help">No reciter profiles are available yet.</p>}<button type="button" className="reciter-manage-link" onClick={() => setShowReciterManagement(true)}>Manage reciters</button></div><label className="field"><span>Written by / poet / author</span><input value={draft.writer} onChange={(event) => setField("writer", event.target.value)} list="known-poets" /><datalist id="known-poets">{poets.map((poet) => <option key={poet.id} value={poet.name} />)}</datalist></label>

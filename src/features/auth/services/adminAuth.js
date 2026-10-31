@@ -142,15 +142,18 @@ export function createAdminAuth({
             await refresh();
             session = readSession();
         }
-        const send = (accessToken) => fetchImpl(`${baseUrl.replace(/\/$/, "")}${path}`, {
-            ...options,
-            headers: {
-                Accept: "application/json",
-                ...(options.body ? { "Content-Type": "application/json" } : {}),
-                ...options.headers,
-                Authorization: `Bearer ${accessToken}`,
-            },
-        });
+        const send = (accessToken) => {
+            const isMultipart = typeof FormData !== "undefined" && options.body instanceof FormData;
+            return fetchImpl(`${baseUrl.replace(/\/$/, "")}${path}`, {
+                ...options,
+                headers: {
+                    Accept: "application/json",
+                    ...(options.body && !isMultipart ? { "Content-Type": "application/json" } : {}),
+                    ...options.headers,
+                    Authorization: `Bearer ${accessToken}`,
+                },
+            });
+        };
         let response = await send(session.accessToken);
         if (response.status !== 401) return response;
         try {

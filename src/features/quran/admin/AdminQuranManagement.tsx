@@ -64,14 +64,14 @@ export function AdminQuranManagement({
 
     return (
         <section className="admin-quran-management">
-            <header className="admin-quran-heading">
+            {/* <header className="admin-quran-heading">
                 <div>
                     <small>QURAN CONTENT</small>
                     <h2>Browse all Surahs</h2>
                     <p>Browse Surah metadata and manage verified Ayah content and translations.</p>
                 </div>
                 <div className="admin-quran-total"><strong>114</strong><span>Total Surahs</span></div>
-            </header>
+            </header> */}
 
             <section className="admin-quran-surah-section" aria-labelledby="admin-surah-list-title">
                 <div className="admin-quran-section-heading">
@@ -81,13 +81,13 @@ export function AdminQuranManagement({
                     </div>
                     <label className="admin-quran-search">
                         <span className="sr-only">Search Surahs</span>
-                        <input
+                        {/* <input
                             type="search"
                             value={search}
                             onChange={(event) => setSearch(event.target.value)}
                             placeholder="Search number, name, or meaning"
                             aria-label="Search Surahs by number, Arabic name, transliteration, or English meaning"
-                        />
+                        /> */}
                     </label>
                 </div>
 

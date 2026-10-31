@@ -1,4 +1,4 @@
-﻿import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, Outlet, Route as RouterRoute, Routes, useLocation, useNavigate } from "react-router-dom";
 import { InterfaceLanguageContext, interfaceAttributeText, LocalizedText, useInterfaceLanguage, useInterfaceText } from "./app/providers/interfaceLanguage";
 import { photos } from "./app/config/media";
@@ -28,7 +28,8 @@ import { formatLyricDate, getLyricArtistNames, getLyricBookName, getLyricCategor
 import { getRouteQueryParam } from "./app/utils/getRouteQueryParam";
 import { lyricsApi } from "./features/lyrics/services/lyricsApiService.js";
 import type { ApiPublicLyric } from "./features/lyrics/services/lyricsApiService.js";
-import { audioCategories, audioLibrary, filterAudioLibrary, getAudioById } from "./audioData";
+import { getAudioById } from "./audioData";
+import type { AudioRecord } from "./audioData.js";
 import { ebookCategories, ebookLibrary, filterEbooks, getEbookById } from "./bookData";
 import { clearPendingAction, createPendingAction, readPendingAction, savePendingAction, safeReturnTo } from "./authActions.js";
 import { adminAuth } from "./features/auth/services/adminAuth.js";
@@ -205,63 +206,89 @@ function formatAudioTime(totalSeconds: number) {
   return `${minutes}:${seconds}`;
 }
 
-function PersistentAudioPlayer({ track, onClose }: { track: (typeof audioLibrary)[number] | null; onClose: () => void }) {
-  const [isPlaying, setIsPlaying] = useState(false);
+function PersistentAudioPlayer({
+  track,
+  tracks,
+  audioRef,
+  isPlaying,
+  onPlayAudio,
+  onPauseAudio,
+  onPlaybackChange,
+  playbackError,
+  onPlaybackError,
+  onClose,
+}: {
+  track: AudioRecord | null;
+  tracks: AudioRecord[];
+  audioRef: { current: HTMLAudioElement | null };
+  isPlaying: boolean;
+  onPlayAudio: (track: AudioRecord) => void;
+  onPauseAudio: () => void;
+  onPlaybackChange: (playing: boolean) => void;
+  playbackError: string;
+  onPlaybackError: (message: string) => void;
+  onClose: () => void;
+}) {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [error, setError] = useState("");
-  const audioRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
-    const player = audioRef.current;
-    if (!track) {
-      setIsPlaying(false);
-      setCurrentTime(0);
-      setDuration(0);
-      setError("");
-      if (player) {
-        player.pause();
-        player.removeAttribute("src");
-        player.load();
-      }
-      return;
-    }
-
-    if (player) {
-      player.src = track.source;
-      player.load();
-    }
     setCurrentTime(0);
     setDuration(0);
-    setError("");
-    setIsPlaying(false);
   }, [track?.id]);
 
-  if (!track) return null;
+  const currentIndex = track ? tracks.findIndex((entry) => entry.id === track.id) : -1;
+  const previousTrack = currentIndex > 0 ? tracks[currentIndex - 1] : null;
+  const nextTrack = currentIndex >= 0 && currentIndex < tracks.length - 1 ? tracks[currentIndex + 1] : null;
+  const isCurrentTrack = (audio: HTMLAudioElement) => !!track && audio.getAttribute("src") === track.source;
 
-  const currentIndex = audioLibrary.findIndex((entry) => entry.id === track.id);
-  const previousTrack = currentIndex > 0 ? audioLibrary[currentIndex - 1] : null;
-  const nextTrack = currentIndex >= 0 && currentIndex < audioLibrary.length - 1 ? audioLibrary[currentIndex + 1] : null;
-
-  const togglePlayback = async () => {
-    const player = audioRef.current;
-    if (!player || !track.source) return;
-
-    if (isPlaying) {
-      player.pause();
-      setIsPlaying(false);
-      return;
-    }
-
-    try {
-      await player.play();
-      setIsPlaying(true);
-    } catch {
-      setError("This sample audio source could not play in your browser.");
-    }
-  };
-
-  return <div className="shared-audio-player" role="region" aria-label={interfaceAttributeText("Persistent audio player")}><audio ref={audioRef} preload="metadata" onLoadedMetadata={(event) => setDuration(event.currentTarget.duration || 0)} onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime || 0)} onPause={() => setIsPlaying(false)} onPlay={() => setIsPlaying(true)} onEnded={() => setIsPlaying(false)} onError={() => { setError("The selected audio source is unavailable or blocked."); setIsPlaying(false); }} /><div className="shared-player-meta"><b>{track.title}</b><small>{track.artist}</small></div><div className="shared-player-controls"><button aria-label={interfaceAttributeText("Previous track")} disabled={!previousTrack} onClick={() => window.dispatchEvent(new CustomEvent("zikr-select-audio", { detail: { id: previousTrack?.id } }))}>{"‹"}</button><button aria-label={interfaceAttributeText(isPlaying ? "Pause audio" : "Play audio")} className="main" onClick={() => void togglePlayback()}>{isPlaying ? "Ⅱ" : <Icon name="play" size={18} />}</button><button aria-label={interfaceAttributeText("Next track")} disabled={!nextTrack} onClick={() => window.dispatchEvent(new CustomEvent("zikr-select-audio", { detail: { id: nextTrack?.id } }))}>{"›"}</button><input aria-label={interfaceAttributeText("Audio progress")} type="range" min="0" max={duration || 100} value={Math.min(currentTime, duration || 100)} onChange={(event) => { const player = audioRef.current; if (!player) return; player.currentTime = Number(event.target.value); setCurrentTime(Number(event.target.value)); }} /><span>{formatAudioTime(currentTime)}</span><span className="divisor">/</span><span>{duration ? formatAudioTime(duration) : "0:00"}</span></div><div className="shared-player-close"><button aria-label={interfaceAttributeText("Close player")} className="close-player" onClick={onClose}>×</button></div>{error && <div className="player-error"><LocalizedText text={error} /></div>}</div>;
+  return <>
+    <audio
+      ref={audioRef}
+      preload="metadata"
+      onLoadedMetadata={(event) => {
+        if (isCurrentTrack(event.currentTarget)) setDuration(Number.isFinite(event.currentTarget.duration) ? event.currentTarget.duration : 0);
+      }}
+      onTimeUpdate={(event) => {
+        if (isCurrentTrack(event.currentTarget)) setCurrentTime(event.currentTarget.currentTime || 0);
+      }}
+      onPause={(event) => {
+        if (isCurrentTrack(event.currentTarget) && event.currentTarget.paused) onPlaybackChange(false);
+      }}
+      onPlay={(event) => {
+        if (!isCurrentTrack(event.currentTarget) || event.currentTarget.paused) return;
+        onPlaybackError("");
+        onPlaybackChange(true);
+      }}
+      onEnded={(event) => {
+        if (!isCurrentTrack(event.currentTarget)) return;
+        onPlaybackChange(false);
+        setCurrentTime(0);
+      }}
+      onError={(event) => {
+        if (!isCurrentTrack(event.currentTarget)) return;
+        onPlaybackChange(false);
+        onPlaybackError("The selected audio source is unavailable or blocked.");
+      }}
+    />
+    {track && <div className="shared-audio-player" role="region" aria-label={interfaceAttributeText("Persistent audio player")}>
+      <div className="shared-player-meta"><b>{track.title}</b><small>{track.artist}</small></div>
+      <div className="shared-player-controls">
+        <button aria-label={interfaceAttributeText("Previous track")} disabled={!previousTrack} onClick={() => previousTrack && onPlayAudio(previousTrack)}>{"‹"}</button>
+        <button aria-label={interfaceAttributeText(isPlaying ? "Pause audio" : "Play audio")} className="main" onClick={() => isPlaying ? onPauseAudio() : onPlayAudio(track)}>{isPlaying ? "Ⅱ" : <Icon name="play" size={18} />}</button>
+        <button aria-label={interfaceAttributeText("Next track")} disabled={!nextTrack} onClick={() => nextTrack && onPlayAudio(nextTrack)}>{"›"}</button>
+        <input aria-label={interfaceAttributeText("Audio progress")} type="range" min="0" max={duration || 100} value={Math.min(currentTime, duration || 100)} onChange={(event) => {
+          const player = audioRef.current;
+          if (!player) return;
+          player.currentTime = Number(event.target.value);
+          setCurrentTime(Number(event.target.value));
+        }} />
+        <span>{formatAudioTime(currentTime)}</span><span className="divisor">/</span><span>{duration ? formatAudioTime(duration) : track.duration}</span>
+      </div>
+      <div className="shared-player-close"><button aria-label={interfaceAttributeText("Close player")} className="close-player" onClick={onClose}>×</button></div>
+      {playbackError && <div className="player-error"><LocalizedText text={playbackError} /></div>}
+    </div>}
+  </>;
 }
 
 function LyricDetail({ go }: { go: (r: Route) => void }) {
@@ -402,8 +429,68 @@ export default function App() {
     return Number.isFinite(saved) ? Math.max(0.9, Math.min(1.2, saved)) : 1;
   });
   const [isLoggedIn, setIsLoggedIn] = useState(() => adminAuth.hasAdminSession());
-  const [activeAudioId, setActiveAudioId] = useState<string | null>(null);
+  const [activeAudio, setActiveAudio] = useState<AudioRecord | null>(null);
+  const [publicAudioTracks, setPublicAudioTracks] = useState<AudioRecord[]>([]);
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+  const [audioPlaybackError, setAudioPlaybackError] = useState("");
+  const audioElementRef = useRef<HTMLAudioElement>(null);
+  const audioRequestId = useRef(0);
+  const activeAudioId = activeAudio?.id || null;
+  const onPublicTracksLoaded = useCallback((tracks: AudioRecord[]) => setPublicAudioTracks(tracks), []);
   const [pendingAction, setPendingAction] = useState(() => readPendingAction());
+
+  const reportAudioPlaybackError = useCallback((message: string) => {
+    setAudioPlaybackError(message);
+    notify.error(message);
+  }, []);
+
+  const handlePlayAudio = useCallback((track: AudioRecord) => {
+    if (!track?.source) return;
+    const player = audioElementRef.current;
+    if (!player) {
+      reportAudioPlaybackError("The audio player is unavailable. Please try again.");
+      return;
+    }
+
+    const sameTrack = activeAudio?.id === track.id && player.getAttribute("src") === track.source;
+    if (sameTrack && !player.paused) return;
+
+    const requestId = ++audioRequestId.current;
+    setActiveAudio(track);
+    setAudioPlaybackError("");
+    if (!sameTrack) {
+      player.pause();
+      player.src = track.source;
+      player.load();
+    }
+
+    void player.play().catch((error: unknown) => {
+      if (requestId !== audioRequestId.current) return;
+      setIsAudioPlaying(false);
+      reportAudioPlaybackError(
+        error instanceof DOMException && error.name === "NotAllowedError"
+          ? "Playback was blocked by your browser. Press Play in the player to try again."
+          : "The selected audio could not be played. Please try again.",
+      );
+    });
+  }, [activeAudio, reportAudioPlaybackError]);
+
+  const handlePauseAudio = useCallback(() => {
+    audioElementRef.current?.pause();
+  }, []);
+
+  const handleCloseAudioPlayer = useCallback(() => {
+    audioRequestId.current += 1;
+    const player = audioElementRef.current;
+    if (player) {
+      player.pause();
+      player.removeAttribute("src");
+      player.load();
+    }
+    setActiveAudio(null);
+    setIsAudioPlaying(false);
+    setAudioPlaybackError("");
+  }, []);
 
   const isLyricsRoute = lyricsRoutePaths.includes(routePath) || routePath === "lyric-detail";
   const isQuranRoute = quranRoutePaths.includes(routePath);
@@ -424,18 +511,20 @@ export default function App() {
 
   useEffect(() => {
     const syncAuth = () => setIsLoggedIn(adminAuth.hasAdminSession());
-    const handleSelectAudio = (event: Event) => {
-      const detail = (event as CustomEvent<{ id?: string }>).detail;
-      if (detail?.id) setActiveAudioId(detail.id);
-    };
 
     window.addEventListener("zikr-auth-state", syncAuth);
-    window.addEventListener("zikr-select-audio", handleSelectAudio as EventListener);
 
     return () => {
       window.removeEventListener("zikr-auth-state", syncAuth);
-      window.removeEventListener("zikr-select-audio", handleSelectAudio as EventListener);
     };
+  }, []);
+
+  useEffect(() => () => {
+    audioRequestId.current += 1;
+    const player = audioElementRef.current;
+    player?.pause();
+    player?.removeAttribute("src");
+    player?.load();
   }, []);
 
   const go = (r: Route) => {
@@ -453,8 +542,6 @@ export default function App() {
     }
     previousRoutePath.current = routePath;
   }, [routePath]);
-
-  const activeAudio = useMemo(() => (activeAudioId ? getAudioById(activeAudioId) : null), [activeAudioId]);
 
   const requireAuthentication = (action: string, contentType: string, contentId: string) => {
     if (isLoggedIn) return true;
@@ -539,12 +626,7 @@ export default function App() {
     window.alert(translateInterface(language, "Account saving is unavailable because this project has no saved-items service."));
   };
 
-  const handlePlayAudio = (track: (typeof audioLibrary)[number]) => {
-    if (!track || !track.source) return;
-    setActiveAudioId(track.id);
-  };
-
-  const handleDownloadAudio = (track: (typeof audioLibrary)[number]) => {
+  const handleDownloadAudio = (track: AudioRecord) => {
     if (!track || !requireAuthentication("download-audio", "audio", track.id)) return;
     if (!track.downloadable || track.isDemo || !isAvailableDownloadUrl(track.downloadUrl)) {
       window.alert(translateInterface(language, "This audio file is not available for download."));
@@ -578,7 +660,7 @@ export default function App() {
     {isLoggedIn && pendingAction && !["login", "register"].includes(routePath) && <PendingActionNotice pendingAction={pendingAction} action={pendingAction.action} onContinue={resumePendingAction} onDismiss={dismissPendingAction} />}
     <Routes>
       <RouterRoute element={<PublicLayout route={headerRoute} routePath={routePath} go={go} language={language} setLanguage={setLanguage} theme={isLyricsRoute ? lyricsTheme : quranTheme} setTheme={isLyricsRoute ? setLyricsTheme : setQuranTheme} fontScale={fontScale} setFontScale={setFontScale} />}>
-        <RouterRoute index element={<Home go={go} onPlayAudio={handlePlayAudio} onDownloadAudio={handleDownloadAudio} activeAudioId={activeAudioId} />} />
+        <RouterRoute index element={<Home go={go} onPlayAudio={handlePlayAudio} onPauseAudio={handlePauseAudio} onDownloadAudio={handleDownloadAudio} onTracksLoaded={onPublicTracksLoaded} activeAudioId={activeAudioId} isAudioPlaying={isAudioPlaying} />} />
         <RouterRoute path="home" element={<Navigate to="/" replace />} />
         <RouterRoute path="lyrics" element={<LyricsPage go={go} route={route} />} />
         <RouterRoute path="lyrics-category" element={<LyricsPage go={go} route={route} />} />
@@ -593,8 +675,8 @@ export default function App() {
         <RouterRoute path="surah-read" element={<SurahRead go={go} isLoggedIn={isLoggedIn} onRequireAuthentication={requireAuthentication} />} />
         <RouterRoute path="para" element={<ParaPage go={go} />} />
         <RouterRoute path="quran-topics" element={<QuranTopics go={go} />} />
-        <RouterRoute path="audio" element={<AudioPage go={go} onPlayAudio={handlePlayAudio} onDownloadAudio={handleDownloadAudio} activeAudioId={activeAudioId} />} />
-        <RouterRoute path="audio-detail" element={<AudioDetail go={go} onPlayAudio={handlePlayAudio} onDownloadAudio={handleDownloadAudio} activeAudioId={activeAudioId} />} />
+        <RouterRoute path="audio" element={<AudioPage go={go} onPlayAudio={handlePlayAudio} onPauseAudio={handlePauseAudio} onDownloadAudio={handleDownloadAudio} onTracksLoaded={onPublicTracksLoaded} activeAudioId={activeAudioId} isAudioPlaying={isAudioPlaying} />} />
+        <RouterRoute path="audio-detail" element={<AudioDetail go={go} onPlayAudio={handlePlayAudio} onPauseAudio={handlePauseAudio} onDownloadAudio={handleDownloadAudio} onTracksLoaded={onPublicTracksLoaded} activeAudioId={activeAudioId} isAudioPlaying={isAudioPlaying} />} />
         <RouterRoute path="services" element={<ServicesPage go={go} />} />
         <RouterRoute path="ebooks" element={<Ebooks go={go} onDownloadBook={handleDownloadBook} />} />
         <RouterRoute path="book-detail" element={<BookDetail go={go} isLoggedIn={isLoggedIn} onDownloadBook={handleDownloadBook} />} />
@@ -614,6 +696,17 @@ export default function App() {
         <RouterRoute path="book-reader" element={<BookReader go={go} />} />
       </RouterRoute>
     </Routes>
-    {activeAudio && <PersistentAudioPlayer track={activeAudio} onClose={() => setActiveAudioId(null)} />}
+    <PersistentAudioPlayer
+      track={activeAudio}
+      tracks={publicAudioTracks}
+      audioRef={audioElementRef}
+      isPlaying={isAudioPlaying}
+      onPlayAudio={handlePlayAudio}
+      onPauseAudio={handlePauseAudio}
+      onPlaybackChange={setIsAudioPlaying}
+      playbackError={audioPlaybackError}
+      onPlaybackError={reportAudioPlaybackError}
+      onClose={handleCloseAudioPlayer}
+    />
   </div></InterfaceLanguageContext.Provider>;
 }

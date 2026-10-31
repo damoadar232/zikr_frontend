@@ -41,11 +41,13 @@ backend/*.war
 /backend/src/main/*
 !/backend/src/main/resources/
 /backend/src/main/resources/*
+!/backend/src/main/resources/application.properties
 !/backend/src/main/resources/db/
 /backend/src/main/resources/db/*
 !/backend/src/main/resources/db/migration/
 /backend/src/main/resources/db/migration/*
 !/backend/src/main/resources/db/migration/V18__support_multiple_quran_translators_per_ayah.sql
+!/backend/src/main/resources/db/migration/V19__create_audio_management.sql
 !/backend/src/main/java/
 /backend/src/main/java/*
 !/backend/src/main/java/db/
@@ -64,6 +66,33 @@ backend/*.war
 !/backend/src/main/java/com/zikrelahi/api/books/
 /backend/src/main/java/com/zikrelahi/api/books/*
 !/backend/src/main/java/com/zikrelahi/api/books/*.java
+!/backend/src/main/java/com/zikrelahi/api/audio/
+!/backend/src/main/java/com/zikrelahi/api/audio/Audio.java
+!/backend/src/main/java/com/zikrelahi/api/audio/AdminAudioController.java
+!/backend/src/main/java/com/zikrelahi/api/audio/AdminAudioCategoryController.java
+!/backend/src/main/java/com/zikrelahi/api/audio/AdminAudioService.java
+!/backend/src/main/java/com/zikrelahi/api/audio/AudioArtistAssignmentRepository.java
+!/backend/src/main/java/com/zikrelahi/api/audio/AudioCategory.java
+!/backend/src/main/java/com/zikrelahi/api/audio/AudioCategoryRepository.java
+!/backend/src/main/java/com/zikrelahi/api/audio/AudioCategoryService.java
+!/backend/src/main/java/com/zikrelahi/api/audio/AudioDtos.java
+!/backend/src/main/java/com/zikrelahi/api/audio/AudioPersistenceService.java
+!/backend/src/main/java/com/zikrelahi/api/audio/AudioRepository.java
+!/backend/src/main/java/com/zikrelahi/api/audio/AudioStatus.java
+!/backend/src/main/java/com/zikrelahi/api/languages/
+!/backend/src/main/java/com/zikrelahi/api/languages/Language.java
+!/backend/src/main/java/com/zikrelahi/api/languages/LanguageRepository.java
+!/backend/src/main/java/com/zikrelahi/api/languages/AdminLanguageController.java
+!/backend/src/main/java/com/zikrelahi/api/media/
+!/backend/src/main/java/com/zikrelahi/api/media/CloudinaryConfiguration.java
+!/backend/src/main/java/com/zikrelahi/api/media/CloudinaryMediaService.java
+!/backend/src/main/java/com/zikrelahi/api/media/CloudinaryProperties.java
+!/backend/src/main/java/com/zikrelahi/api/media/MediaConfigurationException.java
+!/backend/src/main/java/com/zikrelahi/api/media/MediaFileValidator.java
+!/backend/src/main/java/com/zikrelahi/api/media/MediaStorageException.java
+!/backend/src/main/java/com/zikrelahi/api/media/MediaUploadProperties.java
+!/backend/src/main/java/com/zikrelahi/api/media/MediaUploadResult.java
+!/backend/src/main/java/com/zikrelahi/api/media/MediaValidationException.java
 !/backend/src/main/java/com/zikrelahi/api/config/
 /backend/src/main/java/com/zikrelahi/api/config/*
 !/backend/src/main/java/com/zikrelahi/api/config/SecurityConfig.java
@@ -78,6 +107,12 @@ backend/*.war
 !/backend/src/test/java/db/migration/V15AddMissingLyricCategoriesTest.java
 !/backend/src/test/java/db/migration/V16CreateBooksCatalogTest.java
 !/backend/src/test/java/db/migration/V17LyricSubjectsMigrationTest.java
+!/backend/src/test/java/db/migration/V19AudioManagementMigrationTest.java
+!/backend/src/test/java/com/
+!/backend/src/test/java/com/zikrelahi/
+!/backend/src/test/java/com/zikrelahi/api/
+!/backend/src/test/java/com/zikrelahi/api/audio/
+!/backend/src/test/java/com/zikrelahi/api/audio/AdminAudioControllerIntegrationTest.java
 
 # Quran reading API changes
 !/backend/src/main/java/com/zikrelahi/api/quran/
@@ -137,3 +172,13 @@ backend/*.war
 !/backend/docs/
 /backend/docs/*
 !/backend/docs/quran-admin-api.md
+
+# Audio management API and media verification tests
+!/backend/src/test/java/com/zikrelahi/api/audio/
+!/backend/src/test/java/com/zikrelahi/api/audio/*
+!/backend/src/test/java/com/zikrelahi/api/audio/AdminAudioControllerIntegrationTest.java
+!/backend/src/test/java/com/zikrelahi/api/audio/PublicAudioControllerIntegrationTest.java
+!/backend/src/test/java/com/zikrelahi/api/media/
+!/backend/src/test/java/com/zikrelahi/api/media/*
+!/backend/src/test/java/com/zikrelahi/api/media/CloudinaryMediaServiceTest.java
+!/backend/src/test/java/com/zikrelahi/api/media/MediaFileValidatorTest.java
