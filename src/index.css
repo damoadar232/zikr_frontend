@@ -2574,18 +2574,23 @@ select:focus-visible {
 
 .book-reader {
     background: #3a3937;
-    min-height: 100vh;
-    padding-bottom: 60px;
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 48px);
+    height: calc(100dvh - 48px);
+    min-height: 320px;
     overflow: hidden
 }
 
 .reader-bar {
-    height: 65px;
+    flex: 0 0 65px;
+    min-width: 0;
     background: var(--ink);
     color: white;
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 12px;
     padding: 0 24px
 }
 
@@ -2596,74 +2601,120 @@ select:focus-visible {
     padding: 8px
 }
 
-.reader-bar>div {
+.reader-bar>b {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: center
+}
+
+.reader-zoom-controls {
     display: flex;
     align-items: center;
-    gap: 7px
+    gap: 7px;
+    flex: 0 0 auto
 }
 
-.document {
-    width: 620px;
-    height: 780px;
-    background: #fefcf6;
-    margin: 50px auto 30px;
-    padding: 100px 80px;
-    text-align: center;
-    transform-origin: top center;
-    box-shadow: 0 10px 40px #111;
-    transition: .2s
+.reader-zoom-controls button:disabled,
+.page-controls button:disabled {
+    opacity: .4;
+    cursor: not-allowed
 }
 
-.document.pdf-document {
-    width: min(620px, calc(100% - 32px));
-    height: 780px;
+.reader-viewport {
+    position: relative;
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
     min-height: 0;
-    padding: 0;
-    background: #3a3937;
-    text-align: left;
-    box-shadow: none;
-    overflow: hidden
+    overflow: auto;
+    padding: 16px
 }
 
-.reader-pdf-frame {
-    display: block;
+.reader-action-error {
+    position: absolute;
+    z-index: 3;
+    top: 72px;
+    right: 12px;
+    margin: 0;
+    padding: 6px 10px;
+    border-radius: 4px;
+    background: #7d2727;
+    color: #fff;
+    font-size: 12px
+}
+
+.reader-pdf-document {
+    display: flex;
     width: 100%;
-    height: 100%;
-    border: 0;
-    background: #fff
+    min-width: 0;
+    min-height: 100%;
+    align-items: center;
+    justify-content: center
 }
 
-.document small {
-    letter-spacing: .2em;
-    color: var(--gold)
+.reader-page-frame {
+    position: relative;
+    display: flex;
+    min-width: 100%;
+    min-height: 100%;
+    align-items: center;
+    justify-content: center
 }
 
-.document h1 {
-    font-size: calc((50px) * var(--interface-scale, 1));
-    margin-top: 80px
+.reader-page-frame .react-pdf__Page {
+    flex: 0 0 auto;
+    line-height: 0;
+    box-shadow: 0 10px 40px #111
 }
 
-.doc-ornament {
-    font-size: calc((50px) * var(--interface-scale, 1));
-    color: var(--gold);
-    margin: 50px
+.reader-page-frame canvas {
+    display: block;
+    max-width: none
 }
 
-.document p {
-    font-family: Georgia, serif;
-    color: var(--muted)
+.reader-page-loading {
+    position: absolute;
+    z-index: 1;
+    display: grid;
+    min-width: 100%;
+    min-height: 100%;
+    place-items: center;
+    color: #fff;
+    background: #3a3937cc;
+    pointer-events: none
+}
+
+.reader-message {
+    display: flex;
+    max-width: 420px;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    color: #fff;
+    text-align: center
+}
+
+.reader-message p,
+.reader-message h3 {
+    margin: 0
 }
 
 .page-controls {
-    position: fixed;
-    bottom: 18px;
-    left: 50%;
-    transform: translateX(-50%);
+    position: relative;
+    left: auto;
+    bottom: auto;
+    transform: none;
     background: var(--ink);
     color: #fff;
     display: flex;
+    flex: 0 0 56px;
     gap: 25px;
     align-items: center;
+    justify-content: center;
     padding: 9px 18px
 }
 
@@ -4085,30 +4136,55 @@ html[data-theme="dark"] .detail-meta-item {
         gap: 10px
     }
 
-    .document {
-        width: 340px;
-        height: 550px;
-        padding: 60px 25px
+    .book-reader {
+        height: calc(100vh - 48px);
+        height: calc(100dvh - 48px)
     }
 
-    .document.pdf-document {
-        width: min(340px, calc(100% - 32px));
-        height: 550px
+    .reader-bar {
+        flex-basis: 58px;
+        gap: 4px;
+        padding: 0 8px
     }
 
-    .document h1 {
-        font-size: calc((35px) * var(--interface-scale, 1));
-        margin-top: 50px
-    }
-
-    .doc-ornament {
-        margin: 35px
+    .reader-bar>button:first-child {
+        padding: 6px 2px;
+        font-size: 11px;
+        white-space: nowrap
     }
 
     .reader-bar>b {
-        display: none
+        flex: 1 1 auto;
+        font-size: 12px
     }
 
+    .reader-zoom-controls {
+        gap: 2px
+    }
+
+    .reader-zoom-controls button {
+        padding: 6px
+    }
+
+    .reader-viewport {
+        padding: 10px
+    }
+
+    .page-controls {
+        flex-basis: 52px;
+        gap: 12px;
+        padding: 8px
+    }
+}
+
+.book-reader:fullscreen {
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0
+}
+
+@media (max-width: 560px) {
     .page-controls {
         white-space: nowrap;
         gap: 12px;

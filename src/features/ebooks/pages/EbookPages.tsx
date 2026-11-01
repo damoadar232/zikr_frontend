@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Document, Page, pdfjs } from "react-pdf";
+import type { PDFDocumentProxy } from "pdfjs-dist";
 import { LocalizedText, interfaceAttributeText, useInterfaceText } from "../../../app/providers/interfaceLanguage";
 import { getRouteQueryParam } from "../../../app/utils/getRouteQueryParam";
 import { Breadcrumbs, DirectoryHeader, SearchBox, Tabs } from "../../../components/common/PagePrimitives";
@@ -11,6 +13,11 @@ import {
     listPublicEbooks,
     type EbookLibraryItem,
 } from "../services/ebooksApiService";
+
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+    "pdfjs-dist/build/pdf.worker.min.mjs",
+    import.meta.url,
+).toString();
 
 function isNotFound(error: unknown) {
     return typeof error === "object" && error !== null && "status" in error && error.status === 404;
@@ -124,13 +131,27 @@ export function BookReader({ go }: { go: (route: string) => void }) {
     const [loadError, setLoadError] = useState("");
     const [notFound, setNotFound] = useState(false);
     const [retry, setRetry] = useState(0);
+    const [pdfDocument, setPdfDocument] = useState<PDFDocumentProxy | null>(null);
+    const [pdfError, setPdfError] = useState("");
     const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(0);
+    const [pageDimensions, setPageDimensions] = useState<{ width: number; height: number } | null>(null);
+    const [readerSize, setReaderSize] = useState({ width: 0, height: 0 });
+    const [pageRendering, setPageRendering] = useState(true);
     const [zoom, setZoom] = useState(100);
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const [fullscreenError, setFullscreenError] = useState("");
+    const readerRef = useRef<HTMLElement>(null);
+    const viewportRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         let active = true;
         setBook(null);
         setReaderUrl("");
+        setPdfDocument(null);
+        setTotalPages(0);
+        setPageDimensions(null);
+        setPdfError("");
         setPage(1);
         setLoading(true);
         setLoadError("");
@@ -157,6 +178,84 @@ export function BookReader({ go }: { go: (route: string) => void }) {
         return () => { active = false; };
     }, [detailId, retry]);
 
+    useEffect(() => {
+        const viewport = viewportRef.current;
+        if (!viewport) return;
+        const updateSize = () => {
+            const bounds = viewport.getBoundingClientRect();
+            setReaderSize({
+                width: Math.max(0, bounds.width - 32),
+                height: Math.max(0, bounds.height - 32),
+            });
+        };
+        updateSize();
+        const observer = new ResizeObserver(updateSize);
+        observer.observe(viewport);
+        return () => observer.disconnect();
+    }, [readerUrl, loading, isFullscreen]);
+
+    useEffect(() => {
+        if (!pdfDocument || !totalPages) return;
+        let active = true;
+        setPageRendering(true);
+        setPageDimensions(null);
+        void pdfDocument.getPage(page).then((pdfPage) => {
+            if (!active) return;
+            const dimensions = pdfPage.getViewport({ scale: 1 });
+            setPageDimensions({ width: dimensions.width, height: dimensions.height });
+        }).catch((error: unknown) => {
+            if (active) setPdfError(getPdfErrorMessage(error));
+        });
+        return () => { active = false; };
+    }, [pdfDocument, page, totalPages]);
+
+    useEffect(() => {
+        const updateFullscreen = () => setIsFullscreen(document.fullscreenElement === readerRef.current);
+        document.addEventListener("fullscreenchange", updateFullscreen);
+        return () => document.removeEventListener("fullscreenchange", updateFullscreen);
+    }, []);
+
+    const handlePdfLoad = useCallback((documentProxy: PDFDocumentProxy) => {
+        setPdfDocument(documentProxy);
+        setTotalPages(documentProxy.numPages);
+        setPage(1);
+        setPdfError("");
+        setPageRendering(true);
+    }, []);
+
+    const handlePdfError = useCallback((error: Error) => {
+        setPdfError(getPdfErrorMessage(error));
+        setPdfDocument(null);
+    }, []);
+
+    const toggleFullscreen = async () => {
+        const reader = readerRef.current;
+        if (!reader) return;
+        try {
+            if (document.fullscreenElement === reader) {
+                await document.exitFullscreen();
+            } else {
+                await reader.requestFullscreen();
+            }
+        } catch (error) {
+            setFullscreenError(error instanceof Error ? error.message : "Fullscreen mode could not be opened.");
+        }
+    };
+
+    const retryPdf = () => {
+        setPdfDocument(null);
+        setPdfError("");
+        setPage(1);
+        setRetry((value) => value + 1);
+    };
+
+    const fitScale = pageDimensions && readerSize.width && readerSize.height
+        ? Math.min(readerSize.width / pageDimensions.width, readerSize.height / pageDimensions.height)
+        : 0;
+    const pageWidth = pageDimensions && fitScale
+        ? Math.floor(pageDimensions.width * fitScale * (zoom / 100))
+        : 0;
+
     if (loading) {
         return <main className="book-reader"><div className="reader-bar"><button onClick={() => go("ebooks")}><LocalizedText text={"← Back to library"} /></button><b><LocalizedText text={"Opening ebook…"} /></b></div><div className="empty" role="status"><p><LocalizedText text={"Loading the secure PDF reader…"} /></p></div></main>;
     }
@@ -164,5 +263,69 @@ export function BookReader({ go }: { go: (route: string) => void }) {
         return <main className="book-reader"><div className="reader-bar"><button onClick={() => go("ebooks")}><LocalizedText text={"← Back to library"} /></button><b><LocalizedText text={notFound ? "Book unavailable" : "Reader unavailable"} /></b></div><div className="empty" role="alert"><Icon name="book" size={32} /><h3><LocalizedText text={notFound ? "Book not found" : "No reader content available."} /></h3><p>{loadError || "The requested title is not currently open for reading."}</p>{!notFound && <button className="btn btn-primary" onClick={() => setRetry((value) => value + 1)}><LocalizedText text={"Try again"} /></button>}</div></main>;
     }
 
-    return <main className="book-reader"><div className="reader-bar"><button onClick={() => go(`book-detail?id=${book.id}`)}><LocalizedText text={"← Return to book"} /></button><b>{book.title}</b><div><button onClick={() => setZoom(Math.max(70, zoom - 10))}>−</button><span>{zoom}%</span><button onClick={() => setZoom(Math.min(140, zoom + 10))}>+</button><button aria-label={interfaceAttributeText("Full screen")}>⛶</button></div></div><div className="document pdf-document"><iframe className="reader-pdf-frame" title={`${book.title} PDF`} src={`${readerUrl}#toolbar=0&navpanes=0&page=${page}&zoom=${zoom}`} /></div><div className="page-controls"><button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1}><LocalizedText text={"← Previous"} /></button><span><LocalizedText text={"Page"} trailing=" " />{page} <LocalizedText text={"of"} trailing=" " />—</span><button onClick={() => setPage((current) => current + 1)}><LocalizedText text={"Next →"} /></button></div></main>;
+    return <main className="book-reader" ref={readerRef}>
+        <div className="reader-bar">
+            <button onClick={() => go(`book-detail?id=${book.id}`)}><LocalizedText text={"← Return to book"} /></button>
+            <b title={book.title}>{book.title}</b>
+            <div className="reader-zoom-controls">
+                <button aria-label={interfaceAttributeText("Zoom out")} onClick={() => { setZoom((current) => Math.max(70, current - 10)); setPageRendering(true); }} disabled={zoom <= 70}>−</button>
+                <span>{zoom}%</span>
+                <button aria-label={interfaceAttributeText("Zoom in")} onClick={() => { setZoom((current) => Math.min(140, current + 10)); setPageRendering(true); }} disabled={zoom >= 140}>+</button>
+                <button aria-label={interfaceAttributeText(isFullscreen ? "Exit full screen" : "Full screen")} onClick={() => void toggleFullscreen()}>{isFullscreen ? "⛶" : "⛶"}</button>
+            </div>
+        </div>
+        {fullscreenError && <p className="reader-action-error" role="alert">{fullscreenError}</p>}
+        <div className="reader-viewport" ref={viewportRef}>
+            {pdfError ? <div className="reader-message" role="alert"><Icon name="book" size={32} /><h3><LocalizedText text={"The PDF could not be displayed"} /></h3><p>{pdfError}</p><button className="btn btn-primary" onClick={retryPdf}><LocalizedText text={"Retry"} /></button></div> : (
+                <Document
+                    key={`${book.id}-${retry}`}
+                    className="reader-pdf-document"
+                    file={readerUrl}
+                    loading={<div className="reader-message" role="status"><p><LocalizedText text={"Loading PDF…"} /></p></div>}
+                    error={<div className="reader-message" role="alert"><p><LocalizedText text={"The PDF could not be loaded. The signed link may have expired or the network may be unavailable."} /></p><button className="btn btn-primary" onClick={retryPdf}><LocalizedText text={"Retry"} /></button></div>}
+                    noData={<div className="reader-message" role="alert"><p><LocalizedText text={"No PDF file was provided."} /></p></div>}
+                    onLoadSuccess={handlePdfLoad}
+                    onLoadError={handlePdfError}
+                    onSourceError={handlePdfError}
+                    onLoadProgress={() => setPageRendering(true)}
+                    suspense={false}
+                >
+                    {pdfDocument && pageDimensions && pageWidth > 0 && <div className="reader-page-frame">
+                        {pageRendering && <div className="reader-page-loading" role="status"><LocalizedText text={"Rendering page…"} /></div>}
+                        <Page
+                            pageNumber={page}
+                            width={pageWidth}
+                            renderTextLayer={false}
+                            renderAnnotationLayer={false}
+                            loading={<div className="reader-page-loading" role="status"><LocalizedText text={"Rendering page…"} /></div>}
+                            onRenderSuccess={() => setPageRendering(false)}
+                            onRenderError={(error) => {
+                                setPageRendering(false);
+                                setPdfError(getPdfErrorMessage(error));
+                            }}
+                            onLoadError={(error) => setPdfError(getPdfErrorMessage(error))}
+                        />
+                    </div>}
+                </Document>
+            )}
+        </div>
+        <div className="page-controls">
+            <button onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page <= 1 || pageRendering || !!pdfError}><LocalizedText text={"← Previous"} /></button>
+            <span><LocalizedText text={"Page"} trailing=" " />{page} <LocalizedText text={"of"} trailing=" " />{totalPages || "—"}</span>
+            <button onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={!totalPages || page >= totalPages || pageRendering || !!pdfError}><LocalizedText text={"Next →"} /></button>
+        </div>
+    </main>;
+}
+
+function getPdfErrorMessage(error: unknown) {
+    const name = typeof error === "object" && error !== null && "name" in error
+        ? String(error.name)
+        : "";
+    if (name === "InvalidPDFException") {
+        return "This PDF appears to be corrupted or is not a supported PDF document.";
+    }
+    if (name === "MissingPDFException") {
+        return "The PDF could not be found. Its signed link may have expired.";
+    }
+    return "The PDF page could not be loaded. The signed link may have expired or the network may be unavailable.";
 }
