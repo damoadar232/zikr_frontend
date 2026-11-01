@@ -12,4 +12,5 @@ public class MediaUploadProperties {
 
     private DataSize audioMaxFileSize = DataSize.ofMegabytes(100);
     private DataSize coverMaxFileSize = DataSize.ofMegabytes(10);
+    private DataSize ebookBookMaxFileSize = DataSize.ofMegabytes(50);
 }

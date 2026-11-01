@@ -18,7 +18,6 @@ import { AuthPage } from "./features/auth/pages/AuthPage";
 import { AudioPage, AudioDetail } from "./features/audio/pages/AudioPages";
 import { Ebooks, BookDetail, BookReader } from "./features/ebooks/pages/EbookPages";
 import { AudioCard, getAudioCategoryLabel } from "./features/audio/components/AudioCard";
-import { BookCard } from "./features/ebooks/components/BookCard";
 import { LyricTitle } from "./features/lyrics/components/LyricTitle";
 import { ReciterDisclosure } from "./features/lyrics/components/ReciterDisclosure";
 import { YouTubeVideoGrid } from "./features/lyrics/components/YouTubeVideoGrid";
@@ -30,10 +29,11 @@ import { lyricsApi } from "./features/lyrics/services/lyricsApiService.js";
 import type { ApiPublicLyric } from "./features/lyrics/services/lyricsApiService.js";
 import { getAudioById } from "./audioData";
 import type { AudioRecord } from "./audioData.js";
-import { ebookCategories, ebookLibrary, filterEbooks, getEbookById } from "./bookData";
 import { clearPendingAction, createPendingAction, readPendingAction, savePendingAction, safeReturnTo } from "./authActions.js";
 import { adminAuth } from "./features/auth/services/adminAuth.js";
 import { notify } from "./app/notifications/toastStore.js";
+import { getPublicEbookDownloadLink } from "./features/ebooks/services/ebooksApiService";
+import type { EbookLibraryItem } from "./features/ebooks/services/ebooksApiService";
 import { FONT_SCALE_KEY, GLOBAL_LANGUAGE_KEY, THEME_KEY, readPreference, translateInterface } from "./interfacePreferences";
 import { lookupWordMeanings } from "./wordMeaningService";
 import { surahData } from "./features/quran/data/surahMetadata";
@@ -587,16 +587,9 @@ export default function App() {
     }
 
     if (intent.action === "download-book") {
-      const book = getEbookById(intent.contentId);
-      if (!book?.downloadable || !isAvailableDownloadUrl(book.downloadUrl)) {
-        clearPendingAction();
-        setPendingAction(null);
-        window.alert(translateInterface(language, "This PDF is no longer available or authorized for download."));
-        return;
-      }
       clearPendingAction();
       setPendingAction(null);
-      handleDownloadBook(book);
+      void handleDownloadBook({ id: intent.contentId });
       return;
     }
 
@@ -636,14 +629,19 @@ export default function App() {
     if (!opened) window.alert(translateInterface(language, "The browser blocked the download window. Allow pop-ups and retry."));
   };
 
-  const handleDownloadBook = (book: (typeof ebookLibrary)[number]) => {
-    if (!book || !requireAuthentication("download-book", "book", book.id)) return;
-    if (!book.downloadable || !isAvailableDownloadUrl(book.downloadUrl)) {
-      window.alert(translateInterface(language, "This PDF is unavailable or not authorized for download."));
-      return;
+  const handleDownloadBook = async (book: Pick<EbookLibraryItem, "id">) => {
+    if (!book?.id) return;
+    try {
+      const { url } = await getPublicEbookDownloadLink(book.id);
+      const link = document.createElement("a");
+      link.href = url;
+      link.rel = "noopener noreferrer";
+      document.body.append(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      notify.error(error instanceof Error ? error.message : "The PDF could not be downloaded. Please try again.");
     }
-    const opened = window.open(book.downloadUrl, "_blank", "noopener,noreferrer");
-    if (!opened) window.alert(translateInterface(language, "The browser blocked the download window. Allow pop-ups and retry."));
   };
 
   const handleLogout = async () => {
@@ -660,7 +658,7 @@ export default function App() {
     {isLoggedIn && pendingAction && !["login", "register"].includes(routePath) && <PendingActionNotice pendingAction={pendingAction} action={pendingAction.action} onContinue={resumePendingAction} onDismiss={dismissPendingAction} />}
     <Routes>
       <RouterRoute element={<PublicLayout route={headerRoute} routePath={routePath} go={go} language={language} setLanguage={setLanguage} theme={isLyricsRoute ? lyricsTheme : quranTheme} setTheme={isLyricsRoute ? setLyricsTheme : setQuranTheme} fontScale={fontScale} setFontScale={setFontScale} />}>
-        <RouterRoute index element={<Home go={go} onPlayAudio={handlePlayAudio} onPauseAudio={handlePauseAudio} onDownloadAudio={handleDownloadAudio} onTracksLoaded={onPublicTracksLoaded} activeAudioId={activeAudioId} isAudioPlaying={isAudioPlaying} />} />
+        <RouterRoute index element={<Home go={go} onPlayAudio={handlePlayAudio} onPauseAudio={handlePauseAudio} onDownloadAudio={handleDownloadAudio} onDownloadBook={handleDownloadBook} onTracksLoaded={onPublicTracksLoaded} activeAudioId={activeAudioId} isAudioPlaying={isAudioPlaying} />} />
         <RouterRoute path="home" element={<Navigate to="/" replace />} />
         <RouterRoute path="lyrics" element={<LyricsPage go={go} route={route} />} />
         <RouterRoute path="lyrics-category" element={<LyricsPage go={go} route={route} />} />
@@ -679,7 +677,7 @@ export default function App() {
         <RouterRoute path="audio-detail" element={<AudioDetail go={go} onPlayAudio={handlePlayAudio} onPauseAudio={handlePauseAudio} onDownloadAudio={handleDownloadAudio} onTracksLoaded={onPublicTracksLoaded} activeAudioId={activeAudioId} isAudioPlaying={isAudioPlaying} />} />
         <RouterRoute path="services" element={<ServicesPage go={go} />} />
         <RouterRoute path="ebooks" element={<Ebooks go={go} onDownloadBook={handleDownloadBook} />} />
-        <RouterRoute path="book-detail" element={<BookDetail go={go} isLoggedIn={isLoggedIn} onDownloadBook={handleDownloadBook} />} />
+        <RouterRoute path="book-detail" element={<BookDetail go={go} onDownloadBook={handleDownloadBook} />} />
         <RouterRoute path="about" element={<AboutPage go={go} />} />
         <RouterRoute path="contact" element={<ContactPage go={go} />} />
         <RouterRoute path="*" element={<NotFound go={go} />} />

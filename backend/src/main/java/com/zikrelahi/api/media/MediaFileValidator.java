@@ -39,6 +39,14 @@ class MediaFileValidator {
         return validate(upload, properties.getCoverMaxFileSize(), COVER_EXTENSIONS, MediaKind.IMAGE);
     }
 
+    ValidatedFile validateEbookCover(MultipartFile upload) throws IOException {
+        return validate(upload, properties.getCoverMaxFileSize(), COVER_EXTENSIONS, MediaKind.IMAGE);
+    }
+
+    ValidatedFile validateEbookBook(MultipartFile upload) throws IOException {
+        return validate(upload, properties.getEbookBookMaxFileSize(), Set.of("pdf"), MediaKind.PDF);
+    }
+
     private ValidatedFile validate(
             MultipartFile upload,
             DataSize maximumSize,
@@ -73,9 +81,11 @@ class MediaFileValidator {
                         "The " + kind.label + " file exceeds the configured size limit.");
             }
 
-            String detectedFormat = kind == MediaKind.AUDIO
-                    ? validateAudioContent(temporaryFile, extension)
-                    : validateImageContent(temporaryFile, extension);
+            String detectedFormat = switch (kind) {
+                case AUDIO -> validateAudioContent(temporaryFile, extension);
+                case IMAGE -> validateImageContent(temporaryFile, extension);
+                case PDF -> validatePdfContent(temporaryFile);
+            };
             validateProvidedContentType(upload.getContentType(), detectedFormat, kind);
             return new ValidatedFile(temporaryFile, actualSize, originalFilename, detectedFormat);
         } catch (IOException | RuntimeException exception) {
@@ -132,6 +142,13 @@ class MediaFileValidator {
         return mimeType;
     }
 
+    private String validatePdfContent(Path file) throws IOException {
+        if (!asciiAt(readHeader(file, 5), 0, "%PDF-")) {
+            throw new MediaValidationException("The file content is not a valid PDF document.");
+        }
+        return "application/pdf";
+    }
+
     private void validateDecodableImage(Path file) throws IOException {
         try (ImageInputStream input = ImageIO.createImageInputStream(file.toFile())) {
             if (input == null) {
@@ -173,15 +190,17 @@ class MediaFileValidator {
         if ("application/octet-stream".equals(normalized)) {
             return;
         }
-        boolean matches = kind == MediaKind.AUDIO
-                ? switch (detectedType) {
+        boolean matches = switch (kind) {
+            case AUDIO -> switch (detectedType) {
                     case "audio/mpeg" -> Set.of("audio/mpeg", "audio/mp3").contains(normalized);
                     case "audio/wav" -> Set.of("audio/wav", "audio/x-wav", "audio/wave").contains(normalized);
                     case "audio/mp4" -> Set.of("audio/mp4", "audio/x-m4a", "audio/m4a").contains(normalized);
                     default -> false;
-                }
-                : detectedType.equals(normalized)
+                };
+            case IMAGE -> detectedType.equals(normalized)
                         || (detectedType.equals("image/jpeg") && normalized.equals("image/jpg"));
+            case PDF -> detectedType.equals(normalized);
+        };
         if (!matches) {
             throw new MediaValidationException(
                     "The provided MIME type does not match the " + kind.label + " file content.");
@@ -356,7 +375,8 @@ class MediaFileValidator {
 
     enum MediaKind {
         AUDIO("audio", "MP3, WAV, or M4A"),
-        IMAGE("cover image", "JPG, JPEG, PNG, or WEBP");
+        IMAGE("cover image", "JPG, JPEG, PNG, or WEBP"),
+        PDF("ebook PDF", "PDF");
 
         private final String label;
         private final String allowedFormats;
