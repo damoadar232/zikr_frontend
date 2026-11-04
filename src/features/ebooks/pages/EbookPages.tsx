@@ -143,9 +143,36 @@ export function BookReader({ go }: { go: (route: string) => void }) {
     const [fullscreenError, setFullscreenError] = useState("");
     const readerRef = useRef<HTMLElement>(null);
     const viewportRef = useRef<HTMLDivElement>(null);
+    const refreshedExpiredUrlRef = useRef(false);
+
+    const handlePdfError = useCallback((error: Error) => {
+        const status = getPdfResponseStatus(error);
+        if ((status === 401 || status === 403) && !refreshedExpiredUrlRef.current) {
+            refreshedExpiredUrlRef.current = true;
+            void getPublicEbookReadLink(detailId).then((link) => {
+                if (!link.url || link.url === readerUrl) {
+                    throw new Error("The server did not provide a fresh signed PDF link.");
+                }
+                setPdfDocument(null);
+                setTotalPages(0);
+                setPageDimensions(null);
+                setPdfError("");
+                setPage(1);
+                setPageRendering(true);
+                setReaderUrl(link.url);
+            }).catch((refreshError: unknown) => {
+                setPdfError(getPdfErrorMessage(refreshError));
+                setPdfDocument(null);
+            });
+            return;
+        }
+        setPdfError(getPdfErrorMessage(error));
+        setPdfDocument(null);
+    }, [detailId, readerUrl]);
 
     useEffect(() => {
         let active = true;
+        refreshedExpiredUrlRef.current = false;
         setBook(null);
         setReaderUrl("");
         setPdfDocument(null);
@@ -204,10 +231,12 @@ export function BookReader({ go }: { go: (route: string) => void }) {
             const dimensions = pdfPage.getViewport({ scale: 1 });
             setPageDimensions({ width: dimensions.width, height: dimensions.height });
         }).catch((error: unknown) => {
-            if (active) setPdfError(getPdfErrorMessage(error));
+            if (active) {
+                handlePdfError(error instanceof Error ? error : new Error("The selected PDF page could not be loaded."));
+            }
         });
         return () => { active = false; };
-    }, [pdfDocument, page, totalPages]);
+    }, [handlePdfError, pdfDocument, page, totalPages]);
 
     useEffect(() => {
         const updateFullscreen = () => setIsFullscreen(document.fullscreenElement === readerRef.current);
@@ -221,11 +250,6 @@ export function BookReader({ go }: { go: (route: string) => void }) {
         setPage(1);
         setPdfError("");
         setPageRendering(true);
-    }, []);
-
-    const handlePdfError = useCallback((error: Error) => {
-        setPdfError(getPdfErrorMessage(error));
-        setPdfDocument(null);
     }, []);
 
     const toggleFullscreen = async () => {
@@ -278,7 +302,7 @@ export function BookReader({ go }: { go: (route: string) => void }) {
         <div className="reader-viewport" ref={viewportRef}>
             {pdfError ? <div className="reader-message" role="alert"><Icon name="book" size={32} /><h3><LocalizedText text={"The PDF could not be displayed"} /></h3><p>{pdfError}</p><button className="btn btn-primary" onClick={retryPdf}><LocalizedText text={"Retry"} /></button></div> : (
                 <Document
-                    key={`${book.id}-${retry}`}
+                    key={`${book.id}-${readerUrl}-${retry}`}
                     className="reader-pdf-document"
                     file={readerUrl}
                     loading={<div className="reader-message" role="status"><p><LocalizedText text={"Loading PDF…"} /></p></div>}
@@ -298,12 +322,15 @@ export function BookReader({ go }: { go: (route: string) => void }) {
                             renderTextLayer={false}
                             renderAnnotationLayer={false}
                             loading={<div className="reader-page-loading" role="status"><LocalizedText text={"Rendering page…"} /></div>}
-                            onRenderSuccess={() => setPageRendering(false)}
+                            onRenderSuccess={() => {
+                                refreshedExpiredUrlRef.current = false;
+                                setPageRendering(false);
+                            }}
                             onRenderError={(error) => {
                                 setPageRendering(false);
-                                setPdfError(getPdfErrorMessage(error));
+                                handlePdfError(error);
                             }}
-                            onLoadError={(error) => setPdfError(getPdfErrorMessage(error))}
+                            onLoadError={handlePdfError}
                         />
                     </div>}
                 </Document>
@@ -321,11 +348,30 @@ function getPdfErrorMessage(error: unknown) {
     const name = typeof error === "object" && error !== null && "name" in error
         ? String(error.name)
         : "";
+    const message = error instanceof Error ? error.message.trim() : "";
     if (name === "InvalidPDFException") {
         return "This PDF appears to be corrupted or is not a supported PDF document.";
     }
     if (name === "MissingPDFException") {
         return "The PDF could not be found. Its signed link may have expired.";
     }
-    return "The PDF page could not be loaded. The signed link may have expired or the network may be unavailable.";
+    if (/failed to fetch|networkerror|cors/i.test(message)) {
+        return "The browser could not fetch the PDF from Cloudinary. Check the browser Network and Console panels for cross-origin, HTTP status, or range-request errors.";
+    }
+    return message
+        ? `PDF.js could not load the document: ${message}`
+        : "PDF.js could not load the document. Check the browser Network and Console panels for the request error.";
+}
+
+function getPdfResponseStatus(error: unknown): number | undefined {
+    if (typeof error !== "object" || error === null) {
+        return undefined;
+    }
+    if ("status" in error && typeof error.status === "number") {
+        return error.status;
+    }
+    if ("httpStatus" in error && typeof error.httpStatus === "number") {
+        return error.httpStatus;
+    }
+    return undefined;
 }

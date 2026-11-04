@@ -971,17 +971,18 @@ html[lang="ur"] footer {
     letter-spacing: .2em
 }
 
+/* 
 .book-cover b {
-    font-family: var(--serif);
+     font-family: var(--serif);
     font-size: calc((28px) * var(--interface-scale, 1));
     line-height: 1.2;
     margin: 10px 0
-}
+} */
 
-.book-cover i {
+/* .book-cover i {
     font-family: Georgia, serif;
     font-size: calc((11px) * var(--interface-scale, 1))
-}
+} */
 
 .book-card>.badge {
     margin-top: 25px
@@ -8598,7 +8599,7 @@ html[data-theme="dark"] .spotify-track-card-footer a {
     font-weight: 600
 }
 
-.admin-quran-actions button + button {
+.admin-quran-actions button+button {
     margin-left: 6px
 }
 
@@ -8618,7 +8619,7 @@ html[data-theme="dark"] .spotify-track-card-footer a {
     text-align: center
 }
 
-.admin-quran-state button + button {
+.admin-quran-state button+button {
     margin-left: 8px
 }
 
@@ -8717,6 +8718,7 @@ html[data-theme="dark"] .admin-quran-table tbody tr:hover {
 }
 
 @media (max-width: 900px) {
+
     .admin-quran-table,
     .admin-quran-table tbody,
     .admin-quran-table tr,
@@ -8777,12 +8779,13 @@ html[data-theme="dark"] .admin-quran-table tbody tr:hover {
         align-self: center
     }
 
-    .admin-quran-actions button + button {
+    .admin-quran-actions button+button {
         margin-left: 0
     }
 }
 
 @media (max-width: 600px) {
+
     .admin-quran-heading,
     .admin-quran-section-heading,
     .admin-quran-detail-heading {
@@ -9127,6 +9130,7 @@ html[data-theme="dark"] .admin-quran-translation-preview button {
 }
 
 @media (max-width: 520px) {
+
     .admin-quran-ayah-card,
     .admin-quran-ayah-editor {
         padding: 14px
@@ -9612,15 +9616,41 @@ html[data-theme="dark"] .admin-quran-translator-dialog-close {
     table-layout: fixed
 }
 
-.admin-audio-table th:nth-child(1) { width: 78px }
-.admin-audio-table th:nth-child(2) { width: 23% }
-.admin-audio-table th:nth-child(3) { width: 11% }
-.admin-audio-table th:nth-child(4) { width: 13% }
-.admin-audio-table th:nth-child(5) { width: 12% }
-.admin-audio-table th:nth-child(6) { width: 9% }
-.admin-audio-table th:nth-child(7) { width: 12% }
-.admin-audio-table th:nth-child(8) { width: 9% }
-.admin-audio-table th:nth-child(9) { width: 150px }
+.admin-audio-table th:nth-child(1) {
+    width: 78px
+}
+
+.admin-audio-table th:nth-child(2) {
+    width: 23%
+}
+
+.admin-audio-table th:nth-child(3) {
+    width: 11%
+}
+
+.admin-audio-table th:nth-child(4) {
+    width: 13%
+}
+
+.admin-audio-table th:nth-child(5) {
+    width: 12%
+}
+
+.admin-audio-table th:nth-child(6) {
+    width: 9%
+}
+
+.admin-audio-table th:nth-child(7) {
+    width: 12%
+}
+
+.admin-audio-table th:nth-child(8) {
+    width: 9%
+}
+
+.admin-audio-table th:nth-child(9) {
+    width: 150px
+}
 
 .admin-audio-thumbnail,
 .admin-audio-thumbnail-placeholder {
@@ -10347,6 +10377,7 @@ html[data-theme="dark"] .admin-audio-cover-preview {
 }
 
 @media (max-width: 560px) {
+
     .admin-audio-filter-panel,
     .admin-audio-fields,
     .admin-audio-media-grid,
