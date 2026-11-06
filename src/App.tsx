@@ -19,11 +19,12 @@ import { AudioPage, AudioDetail } from "./features/audio/pages/AudioPages";
 import { Ebooks, BookDetail, BookReader } from "./features/ebooks/pages/EbookPages";
 import { AudioCard, getAudioCategoryLabel } from "./features/audio/components/AudioCard";
 import { LyricTitle } from "./features/lyrics/components/LyricTitle";
+import { ArtistProfileAvatar } from "./features/lyrics/components/ArtistProfileAvatar";
 import { ReciterDisclosure } from "./features/lyrics/components/ReciterDisclosure";
 import { YouTubeVideoGrid } from "./features/lyrics/components/YouTubeVideoGrid";
 import { LyricsPage, lyricsRoutePaths } from "./features/lyrics/pages/LyricsPage";
 import { QuranHome, ParaPage, QuranTopics, SurahDirectory, SurahRead } from "./features/quran/pages/QuranPages";
-import { formatLyricDate, getLyricArtistNames, getLyricBookName, getLyricCategoryNames, getLyricWriterName } from "./features/lyrics/utils/lyricsPresentation";
+import { formatLyricDate, getLyricArtistNames, getLyricBookName, getLyricCategoryNames, getLyricWriterName, getLyricWriterProfile } from "./features/lyrics/utils/lyricsPresentation";
 import { getRouteQueryParam } from "./app/utils/getRouteQueryParam";
 import { lyricsApi } from "./features/lyrics/services/lyricsApiService.js";
 import type { ApiPublicLyric } from "./features/lyrics/services/lyricsApiService.js";
@@ -339,12 +340,13 @@ function LyricDetail({ go }: { go: (r: Route) => void }) {
   const version = lyric.languageVersions.find((entry) => entry.code === selectedLanguage) || lyric.languageVersions[0];
   const versionText = version?.text || "";
   const writerName = getLyricWriterName(lyric);
+  const writerProfile = getLyricWriterProfile(lyric);
   const categoryNames = getLyricCategoryNames(lyric).map(t);
   const bookName = getLyricBookName(lyric);
   const subjectName = lyric.subjectIds?.[0] ? lyricSubjects.find((subject) => subject.id === lyric.subjectIds[0])?.name : undefined;
   const metadataFields = [
     ...(getLyricArtistNames(lyric).length ? [["Recited By", <ReciterDisclosure item={lyric} go={go} />] as const] : []),
-    ...(writerName !== "Unknown writer" ? [["Written By", writerName] as const] : []),
+    ...(writerName !== "Unknown writer" ? [["Written By", <span className="lyrics-writer-attribution"><ArtistProfileAvatar imageUrl={writerProfile?.profileImageUrl} />{writerName}</span>] as const] : []),
     ...(lyric.createdAt ? [["Added", formatLyricDate(lyric.createdAt)] as const] : []),
     ...(bookName ? [["Book", bookName] as const] : []),
     ...(subjectName ? [["Subject", subjectName] as const] : []),

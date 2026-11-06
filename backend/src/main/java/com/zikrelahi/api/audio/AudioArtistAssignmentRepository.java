@@ -39,7 +39,8 @@ class AudioArtistAssignmentRepository {
         MapSqlParameterSource parameters = new MapSqlParameterSource("audioIds", audioIds);
         List<CreditRow> rows = namedParameterJdbcTemplate.query("""
                 SELECT assignment.audio_id, assignment.role, assignment.position,
-                       artist.id AS artist_id, artist.artist_key, artist.full_name, artist.display_name
+                       artist.id AS artist_id, artist.artist_key, artist.full_name, artist.display_name,
+                       artist.profile_image_url
                 FROM audio_artist_ids assignment
                 JOIN artists artist ON artist.id = assignment.artist_id
                 WHERE assignment.audio_id IN (:audioIds)
@@ -51,13 +52,15 @@ class AudioArtistAssignmentRepository {
                 result.getLong("artist_id"),
                 result.getString("artist_key"),
                 result.getString("full_name"),
-                result.getString("display_name")));
+                result.getString("display_name"),
+                result.getString("profile_image_url")));
 
         Map<Long, List<AudioDtos.ArtistCreditDto>> singers = new LinkedHashMap<>();
         Map<Long, List<AudioDtos.ArtistCreditDto>> writers = new LinkedHashMap<>();
         for (CreditRow row : rows) {
             AudioDtos.ArtistCreditDto credit = new AudioDtos.ArtistCreditDto(
-                    row.artistId(), row.artistKey(), row.fullName(), row.displayName(), row.position());
+                    row.artistId(), row.artistKey(), row.fullName(), row.displayName(), row.position(),
+                    row.profileImageUrl());
             (row.role().equals("SINGER") ? singers : writers)
                     .computeIfAbsent(row.audioId(), ignored -> new ArrayList<>())
                     .add(credit);
@@ -79,6 +82,7 @@ class AudioArtistAssignmentRepository {
             Long artistId,
             String artistKey,
             String fullName,
-            String displayName) {
+            String displayName,
+            String profileImageUrl) {
     }
 }

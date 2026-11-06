@@ -115,7 +115,8 @@ public final class AudioDtos {
             String artistKey,
             String fullName,
             String displayName,
-            int position) {
+            int position,
+            String profileImageUrl) {
     }
 
     public record AudioArtistCredits(

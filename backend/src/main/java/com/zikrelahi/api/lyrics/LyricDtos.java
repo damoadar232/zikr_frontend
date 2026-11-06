@@ -1,5 +1,6 @@
 package com.zikrelahi.api.lyrics;
 
+import com.zikrelahi.api.artists.ArtistDtos.ArtistProfileDto;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.zikrelahi.api.common.ContentStatus;
 import jakarta.validation.Valid;
@@ -115,7 +116,8 @@ public final class LyricDtos {
             LocalDateTime createdAt,
             List<PublicLanguageVersionDto> languageVersions,
             List<MediaReferenceDto> relatedAudio,
-            List<MediaReferenceDto> relatedVideos) {
+            List<MediaReferenceDto> relatedVideos,
+            List<ArtistProfileDto> artistProfiles) {
     }
 
     public record PublicLanguageVersionDto(
@@ -149,7 +151,8 @@ public final class LyricDtos {
             LocalDateTime createdAt,
             LocalDateTime updatedAt,
             List<AdminLanguageVersionDto> languageVersions,
-            List<MediaReferenceDto> mediaReferences) {
+            List<MediaReferenceDto> mediaReferences,
+            List<ArtistProfileDto> artistProfiles) {
     }
 
     public record AdminLanguageVersionDto(

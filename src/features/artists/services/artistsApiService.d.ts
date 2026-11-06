@@ -8,12 +8,18 @@ export interface ApiArtist {
     fullName: string; displayName: string | null;
     roles: ApiArtistRoleCode[]; biography: string | null; status: ApiArtistStatus;
     createdAt: string; updatedAt: string;
+    profileImageUrl?: string | null;
+    profileImagePublicId?: string | null;
+    profileImageFormat?: string | null;
+    profileImageSize?: number | null;
+    originalProfileImageFilename?: string | null;
 }
 
 export interface ApiArtistOption {
     id: number; artistKey: string;
     fullName: string; displayName: string | null;
     roles: ApiArtistRoleCode[]; status: ApiArtistStatus;
+    profileImageUrl?: string | null;
 }
 
 export interface ApiArtistRoleDto { code: ApiArtistRoleCode; label: string; }
@@ -44,6 +50,8 @@ export interface ArtistsApiService {
     getArtistById(id: string | number): Promise<ApiArtist>;
     createArtist(data: CreateArtistRequest): Promise<ApiArtist>;
     updateArtist(id: string | number, data: UpdateArtistRequest): Promise<ApiArtist>;
+    uploadProfileImage(id: string | number, file: File): Promise<ApiArtist>;
+    removeProfileImage(id: string | number): Promise<ApiArtist | void>;
     updateArtistStatus(id: string | number, status: ApiArtistStatus): Promise<ApiArtist>;
     deleteArtist(id: string | number): Promise<void>;
     getArtistRoles(): Promise<ApiArtistRoleDto[]>;

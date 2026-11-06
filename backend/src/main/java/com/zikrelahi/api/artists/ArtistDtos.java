@@ -42,7 +42,12 @@ public final class ArtistDtos {
             String biography,
             String status,
             LocalDateTime createdAt,
-            LocalDateTime updatedAt) {}
+            LocalDateTime updatedAt,
+            String profileImageUrl,
+            String profileImagePublicId,
+            String profileImageFormat,
+            Long profileImageSize,
+            String originalProfileImageFilename) {}
 
     public record ArtistOptionDto(
             Long id,
@@ -50,7 +55,15 @@ public final class ArtistDtos {
             String fullName,
             String displayName,
             List<String> roles,
-            String status) {}
+            String status,
+            String profileImageUrl) {}
+
+    public record ArtistProfileDto(
+            Long id,
+            String artistKey,
+            String fullName,
+            String displayName,
+            String profileImageUrl) {}
 
     public record RoleDto(String code, String label) {}
 

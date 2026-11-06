@@ -3,8 +3,12 @@ import { artistsApi } from "../../artists/services/artistsApiService.js";
 import type { ApiArtist, ApiArtistPage, ApiArtistRoleDto, ApiArtistStatus, CreateArtistRequest, UpdateArtistRequest } from "../../artists/services/artistsApiService.js";
 import { Icon } from "../../../components/ui";
 import { getUserFacingError, notify } from "../../../app/notifications/toastStore.js";
+import "../../../assests/scss/admin-artist-profile-image.scss";
 
 const pageSize = 20;
+const maxProfileImageSize = 10 * 1024 * 1024;
+const allowedProfileImageExtensions = new Set(["jpg", "jpeg", "png", "webp"]);
+const allowedProfileImageTypes = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp"]);
 type ArtistFormFields = "fullName" | "roles";
 type ArtistRowAction = "status" | "delete";
 type ArtistFormValues = {
@@ -29,6 +33,21 @@ function formatUpdatedAt(value: string | null | undefined) {
     return Number.isNaN(timestamp.getTime()) ? "—" : timestamp.toLocaleDateString();
 }
 
+function ArtistAvatar({ src, label, size = "" }: { src?: string | null; label: string; size?: string }) {
+    const [imageFailed, setImageFailed] = useState(false);
+    const imageUrl = src?.trim() || "";
+
+    useEffect(() => setImageFailed(false), [imageUrl]);
+
+    return (
+        <span className={`admin-artist-avatar${size ? ` admin-artist-avatar-${size}` : ""}`} aria-hidden={!imageUrl || imageFailed}>
+            {imageUrl && !imageFailed
+                ? <img src={imageUrl} alt={`${label} profile`} onError={() => setImageFailed(true)} />
+                : <Icon name="user" size={size === "preview" ? 32 : 20} />}
+        </span>
+    );
+}
+
 export function AdminArtistsManagement() {
     const [result, setResult] = useState<ApiArtistPage | null>(null);
     const [page, setPage] = useState(0);
@@ -50,8 +69,23 @@ export function AdminArtistsManagement() {
     const [formError, setFormError] = useState("");
     const [formLoading, setFormLoading] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [savedArtist, setSavedArtist] = useState<ApiArtist | null>(null);
+    const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
+    const [profileImagePreviewUrl, setProfileImagePreviewUrl] = useState("");
+    const [profileImageError, setProfileImageError] = useState("");
+    const [removingImage, setRemovingImage] = useState(false);
     const [pendingAction, setPendingAction] = useState<{ id: number; type: ArtistRowAction } | null>(null);
     const roleLabels = useMemo(() => new Map(roles.map(({ code, label }) => [code, label])), [roles]);
+
+    useEffect(() => {
+        if (!profileImageFile) {
+            setProfileImagePreviewUrl("");
+            return;
+        }
+        const previewUrl = URL.createObjectURL(profileImageFile);
+        setProfileImagePreviewUrl(previewUrl);
+        return () => URL.revokeObjectURL(previewUrl);
+    }, [profileImageFile]);
 
     useEffect(() => {
         const timer = window.setTimeout(() => setDebouncedQuery(query.trim()), 300);
@@ -124,29 +158,39 @@ export function AdminArtistsManagement() {
         setError("");
     };
     const closeForm = () => {
-        if (saving) return;
+        if (saving || removingImage) return;
         setFormOpen(false);
         setEditingId(null);
         setForm(emptyForm);
         setFieldErrors({});
         setFormError("");
+        setSavedArtist(null);
+        setProfileImageFile(null);
+        setProfileImageError("");
     };
     const startCreate = () => {
         setEditingId(null);
         setForm(emptyForm);
         setFieldErrors({});
         setFormError("");
+        setSavedArtist(null);
+        setProfileImageFile(null);
+        setProfileImageError("");
         setFormOpen(true);
     };
     const startEdit = async (artist: ApiArtist) => {
         setError("");
         setFormError("");
         setFieldErrors({});
+        setSavedArtist(artist);
+        setProfileImageFile(null);
+        setProfileImageError("");
         setEditingId(artist.id);
         setFormOpen(true);
         setFormLoading(true);
         try {
             const details = await artistsApi.getArtistById(artist.id);
+            setSavedArtist(details);
             setForm({
                 fullName: details.fullName,
                 displayName: details.displayName || "",
@@ -160,6 +204,46 @@ export function AdminArtistsManagement() {
             setFormLoading(false);
         }
     };
+    const updateListedArtist = (artist: ApiArtist) => {
+        setResult((current) => current
+            ? { ...current, items: current.items.map((item) => item.id === artist.id ? { ...item, ...artist } : item) }
+            : current);
+    };
+    const selectProfileImage = (file: File | undefined) => {
+        setProfileImageError("");
+        if (!file) return;
+        const extension = file.name.split(".").pop()?.toLowerCase() || "";
+        if (!allowedProfileImageExtensions.has(extension)
+            || (file.type && !allowedProfileImageTypes.has(file.type.toLowerCase()))) {
+            setProfileImageFile(null);
+            setProfileImageError("Choose a JPG, JPEG, PNG, or WebP image.");
+            return;
+        }
+        if (file.size <= 0 || file.size > maxProfileImageSize) {
+            setProfileImageFile(null);
+            setProfileImageError("The image must be larger than 0 bytes and 10 MB or smaller.");
+            return;
+        }
+        setProfileImageFile(file);
+    };
+    const removeSavedProfileImage = async () => {
+        if (!editingId || !savedArtist || !(savedArtist.profileImageUrl || savedArtist.profileImagePublicId)) return;
+        if (!window.confirm(`Remove the profile image for ${savedArtist.fullName}?`)) return;
+        setRemovingImage(true);
+        try {
+            const response = await artistsApi.removeProfileImage(editingId);
+            const updatedArtist = response || await artistsApi.getArtistById(editingId);
+            setSavedArtist(updatedArtist);
+            setProfileImageFile(null);
+            setProfileImageError("");
+            updateListedArtist(updatedArtist);
+            notify.success("Artist profile image removed successfully.");
+        } catch (removeError) {
+            notify.error(getUserFacingError(removeError, "Artist profile image could not be removed."));
+        } finally {
+            setRemovingImage(false);
+        }
+    };
     const saveArtist = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         const nextFieldErrors: Partial<Record<ArtistFormFields, string>> = {};
@@ -168,6 +252,10 @@ export function AdminArtistsManagement() {
         if (!form.roles.length) nextFieldErrors.roles = "Select at least one role.";
         setFieldErrors(nextFieldErrors);
         setFormError("");
+        if (profileImageError) {
+            setFormError("Resolve the profile image validation message or dismiss it before saving.");
+            return;
+        }
         if (Object.keys(nextFieldErrors).length) return;
 
         const payload: CreateArtistRequest & UpdateArtistRequest = {
@@ -179,13 +267,40 @@ export function AdminArtistsManagement() {
         };
         setSaving(true);
         try {
-            if (editingId) await artistsApi.updateArtist(editingId, payload);
-            else await artistsApi.createArtist(payload);
-            notify.success(editingId ? "Artist updated successfully." : "Artist created successfully.");
+            const creating = editingId === null;
+            let artist = creating
+                ? await artistsApi.createArtist(payload)
+                : await artistsApi.updateArtist(editingId, payload);
+            updateListedArtist(artist);
+            setSavedArtist(artist);
+
+            if (profileImageFile) {
+                try {
+                    artist = await artistsApi.uploadProfileImage(artist.id, profileImageFile);
+                    setSavedArtist(artist);
+                    updateListedArtist(artist);
+                } catch (uploadError) {
+                    const message = getUserFacingError(uploadError, "Profile image upload failed.");
+                    if (creating) setEditingId(artist.id);
+                    setFormError(creating
+                        ? `Artist was created, but the profile image upload failed. You can retry it here or later from Edit Artist. ${message}`
+                        : `Artist details were saved, but the profile image upload failed. You can retry by saving again. ${message}`);
+                    notify.error(creating
+                        ? "Artist was created, but the profile image could not be uploaded."
+                        : "Artist details were saved, but the profile image could not be uploaded.");
+                    setListRequestId((current) => current + 1);
+                    return;
+                }
+            }
+
+            notify.success(creating ? "Artist created successfully." : "Artist updated successfully.");
             setFormOpen(false);
             setEditingId(null);
             setForm(emptyForm);
             setFieldErrors({});
+            setSavedArtist(null);
+            setProfileImageFile(null);
+            setProfileImageError("");
             setPage(0);
             setResult(null);
             setLoading(true);
@@ -267,7 +382,7 @@ export function AdminArtistsManagement() {
                 <form className="form-card admin-artist-form" onSubmit={(event) => void saveArtist(event)} noValidate>
                     <div className="admin-artist-form-heading">
                         <h2>{editingId ? "Edit Artist" : "Add Artist"}</h2>
-                        <button type="button" className="btn btn-outline" onClick={closeForm} disabled={saving}>Close</button>
+                        <button type="button" className="btn btn-outline" onClick={closeForm} disabled={saving || removingImage}>Close</button>
                     </div>
                     {formLoading ? <p className="admin-artists-state" role="status">Loading artist details…</p> : (
                         <>
@@ -311,11 +426,55 @@ export function AdminArtistsManagement() {
                                     <option value="INACTIVE">Inactive</option>
                                 </select>
                             </label>
+                            <section className="admin-artist-profile-image" aria-labelledby="artist-profile-image-heading">
+                                <h3 id="artist-profile-image-heading">Profile Image</h3>
+                                <div className="admin-artist-profile-image-content">
+                                    <ArtistAvatar
+                                        src={profileImagePreviewUrl || savedArtist?.profileImageUrl}
+                                        label={form.fullName || "Artist"}
+                                        size="preview"
+                                    />
+                                    <div className="admin-artist-profile-image-controls">
+                                        <label className="admin-artist-image-picker">
+                                            <span>{profileImageFile ? "Choose a different image" : savedArtist?.profileImageUrl ? "Replace image" : "Choose image"}</span>
+                                            <input
+                                                type="file"
+                                                accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                                                aria-label="Choose artist profile image"
+                                                disabled={saving || removingImage}
+                                                onChange={(event) => {
+                                                    selectProfileImage(event.currentTarget.files?.[0]);
+                                                    event.currentTarget.value = "";
+                                                }}
+                                            />
+                                        </label>
+                                        {profileImageFile && (
+                                            <button type="button" className="admin-artist-image-action" onClick={() => { setProfileImageFile(null); setProfileImageError(""); }} disabled={saving || removingImage}>
+                                                Clear selection
+                                            </button>
+                                        )}
+                                        {!profileImageFile && (savedArtist?.profileImageUrl || savedArtist?.profileImagePublicId) && (
+                                            <button type="button" className="admin-artist-image-action admin-artist-image-remove" onClick={() => void removeSavedProfileImage()} disabled={saving || removingImage}>
+                                                {removingImage ? "Removing…" : "Remove image"}
+                                            </button>
+                                        )}
+                                        <p>JPG, JPEG, PNG, or WebP. Maximum size: 10 MB.</p>
+                                        <small>{profileImageFile?.name || savedArtist?.originalProfileImageFilename || "No profile image selected."}</small>
+                                        {profileImageError && (
+                                            <small className="admin-field-error" role="alert">
+                                                {profileImageError}{" "}
+                                                <button type="button" className="admin-artist-image-dismiss" onClick={() => setProfileImageError("")}>Dismiss</button>
+                                            </small>
+                                        )}
+                                        {saving && profileImageFile && <small role="status">Uploading profile image…</small>}
+                                    </div>
+                                </div>
+                            </section>
                             {formError && <p className="admin-form-error" role="alert">{formError}</p>}
                             <div className="admin-form-actions">
-                                <button type="button" className="btn btn-outline" onClick={closeForm} disabled={saving}>Cancel</button>
-                                <button type="submit" className="btn btn-primary" disabled={saving || rolesLoading || roles.length === 0}>
-                                    {saving ? "Saving…" : editingId ? "Save Changes" : "Create Artist"}
+                                <button type="button" className="btn btn-outline" onClick={closeForm} disabled={saving || removingImage}>Cancel</button>
+                                <button type="submit" className="btn btn-primary" disabled={saving || removingImage || rolesLoading || roles.length === 0}>
+                                    {saving ? (profileImageFile ? "Uploading…" : "Saving…") : editingId ? "Save Changes" : "Create Artist"}
                                 </button>
                             </div>
                         </>
@@ -385,7 +544,12 @@ export function AdminArtistsManagement() {
                             <tbody>
                                 {result.items.map((artist: ApiArtist) => (
                                     <tr key={artist.id}>
-                                        <th scope="row" className="admin-artist-full-name">{artist.fullName || "—"}</th>
+                                        <th scope="row" className="admin-artist-full-name">
+                                            <span className="admin-artist-name-cell">
+                                                <ArtistAvatar src={artist.profileImageUrl} label={artist.fullName || "Artist"} />
+                                                <span>{artist.fullName || "—"}</span>
+                                            </span>
+                                        </th>
                                         <td>{artist.displayName?.trim() || "—"}</td>
                                         <td>
                                             <div className="admin-artist-role-list">

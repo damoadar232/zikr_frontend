@@ -1,0 +1,67 @@
+.lyrics-artist-avatar {
+    display: inline-grid;
+    flex: 0 0 auto;
+    place-items: center;
+    overflow: hidden;
+    border: 1px solid var(--line, #e8e2d8);
+    border-radius: 50%;
+    background: var(--cream, #f8f6f1);
+    color: var(--muted, #777);
+    vertical-align: middle;
+}
+
+.lyrics-artist-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.lyrics-artist-avatar--inline {
+    width: 24px;
+    height: 24px;
+    margin-right: 5px;
+}
+
+.lyrics-artist-avatar--directory {
+    width: 40px;
+    height: 40px;
+}
+
+.lyrics-artist-avatar--popup {
+    width: 52px;
+    height: 52px;
+}
+
+.lyrics-artist-avatar--profile {
+    width: 112px;
+    height: 112px;
+    margin-bottom: 16px;
+}
+
+.reciter-hover-preview .lyrics-artist-avatar--popup {
+    width: 54px;
+    height: 54px;
+    flex-basis: 54px;
+}
+
+.reciter-name-wrap {
+    display: inline-flex;
+    align-items: center;
+}
+
+.lyrics-writer-attribution {
+    display: inline-flex;
+    align-items: center;
+}
+
+.lyrics-artist-directory-entry {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.lyrics-artist-directory-entry > span:last-child {
+    display: grid;
+    gap: 3px;
+    text-align: left;
+}

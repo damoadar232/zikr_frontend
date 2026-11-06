@@ -24,10 +24,14 @@ function formatValidationMessage(envelope) {
 export function createArtistsApi({ baseUrl = API_BASE_URL, auth = adminAuth, fetchImpl = globalThis.fetch } = {}) {
     const request = async (path, { method = "GET", body, authenticated = true } = {}) => {
         const base = requireApiBaseUrl(baseUrl);
+        const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
         const options = {
             method,
-            headers: { Accept: "application/json", ...(body === undefined ? {} : { "Content-Type": "application/json" }) },
-            ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+            headers: {
+                Accept: "application/json",
+                ...(body === undefined || isFormData ? {} : { "Content-Type": "application/json" }),
+            },
+            ...(body === undefined ? {} : { body: isFormData ? body : JSON.stringify(body) }),
         };
         const response = authenticated
             ? await auth.authenticatedFetch(path, options)
@@ -63,6 +67,18 @@ export function createArtistsApi({ baseUrl = API_BASE_URL, auth = adminAuth, fet
     const getArtist = (id) => request(`/api/v1/admin/artists/${encodeURIComponent(id)}`);
     const createArtist = (data) => request("/api/v1/admin/artists", { method: "POST", body: data });
     const updateArtist = (id, data) => request(`/api/v1/admin/artists/${encodeURIComponent(id)}`, { method: "PUT", body: data });
+    const uploadProfileImage = (id, file) => {
+        const formData = new FormData();
+        formData.append("profileImageFile", file);
+        return request(`/api/v1/admin/artists/${encodeURIComponent(id)}/profile-image`, {
+            method: "PUT",
+            body: formData,
+        });
+    };
+    const removeProfileImage = (id) => request(
+        `/api/v1/admin/artists/${encodeURIComponent(id)}/profile-image`,
+        { method: "DELETE" },
+    );
     const setArtistStatus = (id, status) => request(`/api/v1/admin/artists/${encodeURIComponent(id)}/status`, { method: "PATCH", body: { status } });
     const deleteArtist = (id) => request(`/api/v1/admin/artists/${encodeURIComponent(id)}`, { method: "DELETE" });
     const getArtistOptions = (options = {}) => request(`/api/v1/admin/artists/options${queryString(options)}`);
@@ -75,6 +91,8 @@ export function createArtistsApi({ baseUrl = API_BASE_URL, auth = adminAuth, fet
         getArtistById: getArtist,
         createArtist,
         updateArtist,
+        uploadProfileImage,
+        removeProfileImage,
         updateArtistStatus: setArtistStatus,
         deleteArtist,
         getArtistRoles: getRoles,

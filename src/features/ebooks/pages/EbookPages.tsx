@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import type { PDFDocumentProxy } from "pdfjs-dist";
+import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { LocalizedText, interfaceAttributeText, useInterfaceText } from "../../../app/providers/interfaceLanguage";
 import { getRouteQueryParam } from "../../../app/utils/getRouteQueryParam";
 import { Breadcrumbs, DirectoryHeader, SearchBox, Tabs } from "../../../components/common/PagePrimitives";
@@ -14,10 +15,7 @@ import {
     type EbookLibraryItem,
 } from "../services/ebooksApiService";
 
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-    "pdfjs-dist/build/pdf.worker.min.mjs",
-    import.meta.url,
-).toString();
+pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker;
 
 function isNotFound(error: unknown) {
     return typeof error === "object" && error !== null && "status" in error && error.status === 404;

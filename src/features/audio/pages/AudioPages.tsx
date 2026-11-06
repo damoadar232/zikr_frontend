@@ -86,10 +86,10 @@ export function AudioPage({ go, onPlayAudio, onPauseAudio, onDownloadAudio, onTr
             }} />
         </div>
         {categoryError && <div className="container"><div className="empty" role="alert"><p>{categoryError}</p><button className="btn btn-primary" onClick={() => setCategoryRetry((current) => current + 1)}><LocalizedText text={"Try again"} /></button></div></div>}
-        <section className="section container">
+        {/* <section className="section container">
             <SectionHead eyebrow="Official Spotify players" title="Spotify tracks" body="Playback is provided by Spotify. Open a track there if the embedded player is unavailable." />
             <SpotifyTrackGrid />
-        </section>
+        </section> */}
         <section className="section container">
             <SectionHead eyebrow={`${tracks.length} tracks • newest first`} title={interfaceAttributeText("Latest Audio")} />
             {loading ? <div className="empty" role="status"><p><LocalizedText text={"Loading audio…"} /></p></div>

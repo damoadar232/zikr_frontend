@@ -50,6 +50,7 @@ backend/*.war
 !/backend/src/main/resources/db/migration/V19__create_audio_management.sql
 !/backend/src/main/resources/db/migration/V20__create_ebooks_management.sql
 !/backend/src/main/resources/db/migration/V21__seed_arabic_language.sql
+!/backend/src/main/resources/db/migration/V22__add_artist_profile_image_metadata.sql
 !/backend/src/main/java/
 /backend/src/main/java/*
 !/backend/src/main/java/db/
@@ -65,6 +66,12 @@ backend/*.war
 /backend/src/main/java/com/zikrelahi/*
 !/backend/src/main/java/com/zikrelahi/api/
 /backend/src/main/java/com/zikrelahi/api/*
+!/backend/src/main/java/com/zikrelahi/api/artists/
+/backend/src/main/java/com/zikrelahi/api/artists/*
+!/backend/src/main/java/com/zikrelahi/api/artists/ArtistProfileImageService.java
+!/backend/src/main/java/com/zikrelahi/api/lyrics/
+/backend/src/main/java/com/zikrelahi/api/lyrics/*
+!/backend/src/main/java/com/zikrelahi/api/lyrics/LyricRelations.java
 !/backend/src/main/java/com/zikrelahi/api/books/
 /backend/src/main/java/com/zikrelahi/api/books/*
 !/backend/src/main/java/com/zikrelahi/api/books/*.java

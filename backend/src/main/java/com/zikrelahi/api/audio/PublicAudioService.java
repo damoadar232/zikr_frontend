@@ -101,7 +101,8 @@ public class PublicAudioService {
                         credit.artistKey(),
                         credit.fullName(),
                         credit.displayName(),
-                        credit.position()))
+                        credit.position(),
+                        credit.profileImageUrl()))
                 .toList();
     }
 

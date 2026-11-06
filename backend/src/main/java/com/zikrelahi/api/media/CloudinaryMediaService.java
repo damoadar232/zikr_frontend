@@ -22,6 +22,7 @@ public class CloudinaryMediaService {
 
     private static final String AUDIO_FOLDER = "zikr-e-ilahi/audio";
     private static final String COVER_FOLDER = "zikr-e-ilahi/audio-covers";
+    private static final String ARTIST_PROFILE_FOLDER = "zikr-e-ilahi/artist-profiles";
     private static final String EBOOK_COVER_FOLDER = "zikr-e-ilahi/ebook-covers";
     private static final String EBOOK_FOLDER = "zikr-e-ilahi/ebooks";
     private static final String AUDIO_RESOURCE_TYPE = "video";
@@ -39,7 +40,11 @@ public class CloudinaryMediaService {
     }
 
     public MediaUploadResult uploadCoverImage(MultipartFile upload) {
-        return upload(upload, false);
+        return upload(upload, false, COVER_FOLDER);
+    }
+
+    public MediaUploadResult uploadArtistProfileImage(MultipartFile upload) {
+        return upload(upload, false, ARTIST_PROFILE_FOLDER);
     }
 
     public void deleteAudio(String publicId) {
@@ -48,6 +53,10 @@ public class CloudinaryMediaService {
 
     public void deleteCoverImage(String publicId) {
         deleteAsset(publicId, "image");
+    }
+
+    public void deleteArtistProfileImage(String publicId) {
+        deleteAsset(publicId, IMAGE_RESOURCE_TYPE, UPLOAD_DELIVERY_TYPE);
     }
 
     public MediaUploadResult uploadEbookCoverImage(MultipartFile upload) {
@@ -193,6 +202,10 @@ public class CloudinaryMediaService {
     }
 
     private MediaUploadResult upload(MultipartFile upload, boolean audio) {
+        return upload(upload, audio, audio ? AUDIO_FOLDER : COVER_FOLDER);
+    }
+
+    private MediaUploadResult upload(MultipartFile upload, boolean audio, String folder) {
         ensureConfigured();
 
         MediaFileValidator.ValidatedFile validatedFile;
@@ -210,7 +223,6 @@ public class CloudinaryMediaService {
         String publicId = null;
         try {
             String resourceType = audio ? AUDIO_RESOURCE_TYPE : "image";
-            String folder = audio ? AUDIO_FOLDER : COVER_FOLDER;
             response = cloudinary.uploader().upload(
                     validatedFile.path().toFile(),
                     ObjectUtils.asMap(

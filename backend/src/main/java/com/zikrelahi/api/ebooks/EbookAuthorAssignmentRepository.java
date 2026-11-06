@@ -40,7 +40,8 @@ class EbookAuthorAssignmentRepository {
         MapSqlParameterSource parameters = new MapSqlParameterSource("ebookIds", ebookIds);
         List<AuthorRow> rows = namedParameterJdbcTemplate.query("""
                 SELECT assignment.ebook_id, assignment.position,
-                       artist.id AS artist_id, artist.artist_key, artist.full_name, artist.display_name
+                       artist.id AS artist_id, artist.artist_key, artist.full_name, artist.display_name,
+                       artist.profile_image_url
                 FROM ebook_author_ids assignment
                 JOIN artists artist ON artist.id = assignment.artist_id
                 WHERE assignment.ebook_id IN (:ebookIds)
@@ -51,7 +52,8 @@ class EbookAuthorAssignmentRepository {
                 result.getLong("artist_id"),
                 result.getString("artist_key"),
                 result.getString("full_name"),
-                result.getString("display_name")));
+                result.getString("display_name"),
+                result.getString("profile_image_url")));
 
         Map<Long, List<Artist>> authorsByEbook = new LinkedHashMap<>();
         for (AuthorRow row : rows) {
@@ -60,6 +62,7 @@ class EbookAuthorAssignmentRepository {
                     .artistKey(row.artistKey())
                     .fullName(row.fullName())
                     .displayName(row.displayName())
+                    .profileImageUrl(row.profileImageUrl())
                     .build();
             authorsByEbook.computeIfAbsent(row.ebookId(), ignored -> new ArrayList<>()).add(artist);
         }
@@ -77,6 +80,7 @@ class EbookAuthorAssignmentRepository {
             Long artistId,
             String artistKey,
             String fullName,
-            String displayName) {
+            String displayName,
+            String profileImageUrl) {
     }
 }

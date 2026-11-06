@@ -2,6 +2,7 @@ package com.zikrelahi.api.artists;
 
 import com.zikrelahi.api.common.ConflictException;
 import com.zikrelahi.api.common.ResourceNotFoundException;
+import com.zikrelahi.api.media.MediaUploadResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.data.domain.Page;
@@ -70,6 +71,40 @@ public class AdminArtistService {
     @Transactional(readOnly = true)
     public ArtistDtos.AdminArtistDto get(String id) {
         return toDto(findOrThrow(id));
+    }
+
+    @Transactional
+    public ProfileImageChange updateProfileImage(String id, MediaUploadResult media) {
+        Artist artist = findOrThrow(id);
+        String previousPublicId = artist.getProfileImagePublicId();
+        artist.setProfileImageUrl(media.secureUrl());
+        artist.setProfileImagePublicId(media.publicId());
+        artist.setProfileImageFormat(media.format());
+        artist.setProfileImageSize(media.sizeBytes());
+        artist.setOriginalProfileImageFilename(media.originalFilename());
+        Artist saved = artistRepository.saveAndFlush(artist);
+        return new ProfileImageChange(toDto(saved), previousPublicId);
+    }
+
+    @Transactional
+    public ProfileImageChange removeProfileImage(String id) {
+        Artist artist = findOrThrow(id);
+        String previousPublicId = artist.getProfileImagePublicId();
+        boolean hasMetadata = artist.getProfileImageUrl() != null
+                || previousPublicId != null
+                || artist.getProfileImageFormat() != null
+                || artist.getProfileImageSize() != null
+                || artist.getOriginalProfileImageFilename() != null;
+        if (!hasMetadata) {
+            return new ProfileImageChange(toDto(artist), null);
+        }
+        artist.setProfileImageUrl(null);
+        artist.setProfileImagePublicId(null);
+        artist.setProfileImageFormat(null);
+        artist.setProfileImageSize(null);
+        artist.setOriginalProfileImageFilename(null);
+        Artist saved = artistRepository.saveAndFlush(artist);
+        return new ProfileImageChange(toDto(saved), previousPublicId);
     }
 
     @Transactional
@@ -209,7 +244,12 @@ public class AdminArtistService {
                 artist.getBiography(),
                 artist.getStatus().name(),
                 artist.getCreatedAt(),
-                artist.getUpdatedAt());
+                artist.getUpdatedAt(),
+                artist.getProfileImageUrl(),
+                artist.getProfileImagePublicId(),
+                artist.getProfileImageFormat(),
+                artist.getProfileImageSize(),
+                artist.getOriginalProfileImageFilename());
     }
 
     private ArtistDtos.ArtistOptionDto toOptionDto(Artist artist) {
@@ -219,6 +259,10 @@ public class AdminArtistService {
                 artist.getFullName(),
                 artist.getDisplayName(),
                 artist.getRoles().stream().map(Enum::name).sorted().toList(),
-                artist.getStatus().name());
+                artist.getStatus().name(),
+                artist.getProfileImageUrl());
+    }
+
+    public record ProfileImageChange(ArtistDtos.AdminArtistDto artist, String previousPublicId) {
     }
 }

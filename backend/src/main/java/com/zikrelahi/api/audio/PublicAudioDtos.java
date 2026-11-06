@@ -14,7 +14,13 @@ public final class PublicAudioDtos {
     public record CategoryDto(String categoryKey, String name, String description) {
     }
 
-    public record ArtistDto(Long id, String artistKey, String fullName, String displayName, int position) {
+    public record ArtistDto(
+            Long id,
+            String artistKey,
+            String fullName,
+            String displayName,
+            int position,
+            String profileImageUrl) {
     }
 
     public record AudioDto(

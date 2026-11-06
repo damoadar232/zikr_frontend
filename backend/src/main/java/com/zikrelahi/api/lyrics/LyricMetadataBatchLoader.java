@@ -1,5 +1,6 @@
 package com.zikrelahi.api.lyrics;
 
+import com.zikrelahi.api.artists.ArtistDtos.ArtistProfileDto;
 import com.zikrelahi.api.lyrics.LyricDtos.MediaReferenceDto;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -53,6 +54,38 @@ class LyricMetadataBatchLoader {
                                                                 .computeIfAbsent(result.getLong("lyric_id"),
                                                                                 ignored -> new LyricRelations()).artistIds
                                                                 .add(result.getLong("artist_id")));
+                jdbc.query("""
+                                SELECT related.lyric_id, artist.id AS artist_id,
+                                       artist.artist_key, artist.full_name,
+                                       artist.display_name, artist.profile_image_url
+                                FROM (
+                                    SELECT lyric_id, artist_id
+                                    FROM lyric_artist_ids
+                                    WHERE lyric_id IN (:lyricIds)
+                                    UNION
+                                    SELECT id AS lyric_id, artist_id
+                                    FROM lyrics
+                                    WHERE id IN (:lyricIds) AND artist_id IS NOT NULL
+                                    UNION
+                                    SELECT id AS lyric_id, writer_id AS artist_id
+                                    FROM lyrics
+                                    WHERE id IN (:lyricIds) AND writer_id IS NOT NULL
+                                ) related
+                                JOIN artists artist ON artist.id = related.artist_id
+                                ORDER BY related.lyric_id, artist.id
+                                """,
+                                parameters,
+                                (RowCallbackHandler) result -> {
+                                        ArtistProfileDto artist = new ArtistProfileDto(
+                                                        result.getLong("artist_id"),
+                                                        result.getString("artist_key"),
+                                                        result.getString("full_name"),
+                                                        result.getString("display_name"),
+                                                        result.getString("profile_image_url"));
+                                        relations.computeIfAbsent(result.getLong("lyric_id"),
+                                                        ignored -> new LyricRelations())
+                                                        .artistProfiles.put(artist.id(), artist);
+                                });
                 loadStrings("""
                                 SELECT lyric_id, relation_value
                                 FROM (

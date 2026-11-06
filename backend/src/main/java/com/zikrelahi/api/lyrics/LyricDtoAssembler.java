@@ -73,7 +73,8 @@ public class LyricDtoAssembler {
                 relations.artistIds(), relations.reciters(), lyric.getWriterId(), lyric.getWriterName(),
                 relations.categoryIds(), relations.subjectIds(), relations.tags(), lyric.getBookId(),
                 lyric.getCoverImageUrl(), lyric.isFeatured(), lyric.getCreatedAt(),
-                versions.stream().map(this::toPublicVersion).toList(), audio, video);
+                versions.stream().map(this::toPublicVersion).toList(), audio, video,
+                relations.artistProfiles());
     }
 
     private AdminLyricDto toAdmin(Lyric lyric, LyricRelations relations,
@@ -83,7 +84,8 @@ public class LyricDtoAssembler {
                 lyric.getWriterName(), relations.categoryIds(), relations.subjectIds(), relations.tags(),
                 lyric.getBookId(), lyric.getCoverImageUrl(), lyric.isFeatured(), lyric.getStatus(),
                 lyric.getCreatedAt(), lyric.getUpdatedAt(),
-                versions.stream().map(this::toAdminVersion).toList(), relations.mediaReferences());
+                versions.stream().map(this::toAdminVersion).toList(), relations.mediaReferences(),
+                relations.artistProfiles());
     }
 
     private PublicLanguageVersionDto toPublicVersion(LyricLanguageVersion version) {

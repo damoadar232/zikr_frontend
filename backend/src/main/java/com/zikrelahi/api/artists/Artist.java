@@ -29,6 +29,21 @@ public class Artist {
     @Column(columnDefinition = "TEXT")
     private String biography;
 
+    @Column(name = "profile_image_url", length = 1000)
+    private String profileImageUrl;
+
+    @Column(name = "profile_image_public_id", length = 255)
+    private String profileImagePublicId;
+
+    @Column(name = "profile_image_format", length = 20)
+    private String profileImageFormat;
+
+    @Column(name = "profile_image_size")
+    private Long profileImageSize;
+
+    @Column(name = "original_profile_image_filename", length = 255)
+    private String originalProfileImageFilename;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default

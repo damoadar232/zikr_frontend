@@ -1,5 +1,6 @@
 import { artists, lyricBooks, lyricCategories, poets } from "../../../lyricsData";
 import { reciterProfiles } from "../data/reciterProfiles";
+import type { ApiArtistProfile } from "../services/lyricsApiService.js";
 
 export function getLyricCategoryNames(item: any) {
     return (item.categoryIds || []).map((categoryId: string) => lyricCategories.find((category) => category.id === categoryId)?.name || categoryId).filter(Boolean);
@@ -27,6 +28,37 @@ export function getLyricArtistNames(item: any): string[] {
         .filter((name): name is string => typeof name === "string" && !!name.trim());
     const names: string[] = explicitNames.length ? explicitNames : relatedNames.length ? relatedNames : typeof item.artist === "string" ? [item.artist] : [];
     return names.filter((name, index) => names.findIndex((candidate) => candidate.trim().toLowerCase() === name.trim().toLowerCase()) === index);
+}
+
+export function getLyricArtistProfiles(item: any): ApiArtistProfile[] {
+    if (!Array.isArray(item.artistProfiles)) return [];
+    return item.artistProfiles.filter((value: unknown): value is ApiArtistProfile => {
+        if (!value || typeof value !== "object") return false;
+        const profile = value as Record<string, unknown>;
+        return typeof profile.id === "number"
+            && typeof profile.artistKey === "string"
+            && typeof profile.fullName === "string"
+            && (typeof profile.displayName === "string" || profile.displayName === null)
+            && (typeof profile.profileImageUrl === "string" || profile.profileImageUrl === null
+                || profile.profileImageUrl === undefined);
+    });
+}
+
+export function getLyricArtistProfile(item: any, identifier: string | number): ApiArtistProfile | undefined {
+    const value = String(identifier).trim().toLowerCase();
+    return getLyricArtistProfiles(item).find((profile) =>
+        String(profile.id) === value
+        || profile.artistKey?.trim().toLowerCase() === value
+        || profile.fullName.trim().toLowerCase() === value
+        || profile.displayName?.trim().toLowerCase() === value);
+}
+
+export function getLyricWriterProfile(item: any): ApiArtistProfile | undefined {
+    if (item.writerId !== undefined && item.writerId !== null) {
+        const byId = getLyricArtistProfile(item, item.writerId);
+        if (byId) return byId;
+    }
+    return typeof item.writer === "string" ? getLyricArtistProfile(item, item.writer) : undefined;
 }
 
 export function getLyricReciterIds(item: any): string[] {

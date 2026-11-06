@@ -20,6 +20,14 @@ export interface ApiMediaReference {
     url: string;
 }
 
+export interface ApiArtistProfile {
+    id: number;
+    artistKey: string;
+    fullName: string;
+    displayName: string | null;
+    profileImageUrl?: string | null;
+}
+
 export interface ApiLyricSubject {
     id: string;
     name: string;
@@ -74,6 +82,7 @@ export interface ApiPublicLyric {
     reciters: string[];
     writerId: number | null;
     writer: string | null;
+    artistProfiles?: ApiArtistProfile[];
     categoryIds: string[];
     subjectIds: string[];
     tags: string[];

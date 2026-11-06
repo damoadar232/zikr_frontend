@@ -403,7 +403,8 @@ public class EbookPersistenceService {
                     artist.getArtistKey(),
                     artist.getFullName(),
                     artist.getDisplayName(),
-                    position));
+                    position,
+                    artist.getProfileImageUrl()));
         }
         return List.copyOf(result);
     }

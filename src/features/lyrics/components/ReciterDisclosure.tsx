@@ -4,7 +4,8 @@ import { useContentCollection } from "../../../app/hooks/useContentCollection";
 import { lyrics as initialLyrics } from "../../../lyricsData";
 import { reciterProfiles, type ReciterProfile } from "../data/reciterProfiles";
 import type { LyricRecord } from "../types";
-import { getLyricArtistNames, getLyricReciterIds } from "../utils/lyricsPresentation";
+import { getLyricArtistNames, getLyricArtistProfile, getLyricReciterIds } from "../utils/lyricsPresentation";
+import { ArtistProfileAvatar } from "./ArtistProfileAvatar";
 
 type PositionedProfile = { profile: ReciterProfile; left: number; top: number };
 
@@ -40,6 +41,7 @@ export function ReciterDisclosure({ item, go }: { item: any; go?: (route: string
     const resolved = names.map((name) => profiles.find((profile) => profile.name.toLowerCase() === name.toLowerCase())).filter((profile): profile is ReciterProfile => !!profile);
     const uniqueProfiles = [...new Map(resolved.map((profile) => [profile.name.trim().toLowerCase(), profile])).values()];
     const unmatchedNames = names.filter((name) => !uniqueProfiles.some((profile) => profile.name.toLowerCase() === name.toLowerCase()));
+    const imageForName = (name: string) => getLyricArtistProfile(item, name)?.profileImageUrl;
 
     const cancelHide = () => {
         if (hideTimer.current) clearTimeout(hideTimer.current);
@@ -115,7 +117,7 @@ export function ReciterDisclosure({ item, go }: { item: any; go?: (route: string
             onMouseEnter={cancelHide}
             onMouseLeave={hidePreviewSoon}
         >
-            {preview.profile.profileImage && <img src={preview.profile.profileImage} alt="" />}
+            <ArtistProfileAvatar imageUrl={imageForName(preview.profile.name)} size="popup" />
             <div><b>{preview.profile.name}</b><small>{preview.profile.roles.join(" · ")}</small><p>{preview.profile.biography}</p><small>{publishedLyrics.filter((lyric) => getLyricReciterIds(lyric).includes(preview.profile.id)).length} associated lyrics</small></div>
         </aside>,
         document.body,
@@ -124,7 +126,7 @@ export function ReciterDisclosure({ item, go }: { item: any; go?: (route: string
         <div className="reciter-profile-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelected(null); }} onClick={(event) => event.stopPropagation()}>
             <section className="reciter-profile-dialog" role="dialog" aria-modal="true" aria-labelledby="reciter-profile-title">
                 <button ref={closeButtonRef} type="button" className="reciter-profile-close" aria-label="Close reciter profile" onClick={() => setSelected(null)}>×</button>
-                {selected.profileImage && <img className="reciter-profile-image" src={selected.profileImage} alt="" />}
+                <ArtistProfileAvatar imageUrl={imageForName(selected.name)} size="profile" />
                 <span className="eyebrow">RECITED BY</span>
                 <h2 id="reciter-profile-title">{selected.name}</h2>
                 <p className="reciter-profile-roles">{selected.roles.join(" · ")}</p>
@@ -143,6 +145,7 @@ export function ReciterDisclosure({ item, go }: { item: any; go?: (route: string
     return <span className="reciter-disclosure">
         {uniqueProfiles.map((profile, index) => <span className="reciter-name-wrap" key={profile.id}>
             {index > 0 && <span aria-hidden="true">, </span>}
+            <ArtistProfileAvatar imageUrl={imageForName(profile.name)} />
             <button
                 type="button"
                 className="reciter-name"
@@ -154,7 +157,10 @@ export function ReciterDisclosure({ item, go }: { item: any; go?: (route: string
                 onBlur={hidePreviewSoon}
             >{profile.name}</button>
         </span>)}
-        {unmatchedNames.map((name, index) => <span key={`${name}-${index}`}>{uniqueProfiles.length > 0 || index > 0 ? ", " : ""}{name}</span>)}
+        {unmatchedNames.map((name, index) => <span className="reciter-name-wrap" key={`${name}-${index}`}>
+            {uniqueProfiles.length > 0 || index > 0 ? <span aria-hidden="true">, </span> : null}
+            <ArtistProfileAvatar imageUrl={imageForName(name)} />{name}
+        </span>)}
         {profilePopup}
         {dialog}
     </span>;
