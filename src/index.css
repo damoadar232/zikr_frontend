@@ -4735,7 +4735,7 @@ html[data-theme="dark"] .detail-meta-item {
     margin: 0
 }
 
-.lyrics-artist-profile > div {
+.lyrics-artist-profile>div {
     min-width: 0
 }
 
@@ -4920,6 +4920,111 @@ html[data-theme="dark"] .detail-meta-item {
         width: 48px;
         height: 48px
     }
+}
+
+.lyrics-artist-profile-drawer {
+    min-height: 0;
+    overflow: hidden
+}
+
+.lyrics-artist-profile-drawer .lyrics-artist-drawer-content {
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-bottom: 8px
+}
+
+.lyrics-artist-profile-list {
+    display: grid;
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+    list-style: none
+}
+
+.lyrics-artist-profile-card {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: 36px minmax(0, 1fr);
+    align-items: start;
+    gap: 14px;
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--white)
+}
+
+.lyrics-artist-profile-card-number {
+    display: grid;
+    width: 32px;
+    height: 32px;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--cream);
+    color: var(--muted);
+    font-family: var(--serif);
+    font-size: calc((14px) * var(--interface-scale, 1))
+}
+
+.lyrics-artist-profile-card-content {
+    display: grid;
+    min-width: 0;
+    gap: 14px
+}
+
+.lyrics-artist-profile-card-title {
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--text);
+    font-family: var(--serif);
+    font-size: calc((19px) * var(--interface-scale, 1));
+    font-weight: 700;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+    text-align: left;
+    cursor: pointer
+}
+
+.lyrics-artist-profile-card-title:hover {
+    color: var(--gold)
+}
+
+.lyrics-artist-profile-card-title .lyric-title-secondary {
+    color: var(--muted);
+    font-family: var(--sans);
+    font-size: .68em;
+    font-weight: 400
+}
+
+.lyrics-artist-profile-card-metadata {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    gap: 8px 20px
+}
+
+.lyrics-artist-profile-card-metadata-item {
+    display: grid;
+    min-width: 0;
+    gap: 3px
+}
+
+.lyrics-artist-profile-card-metadata-item small {
+    color: var(--muted);
+    font-size: calc((10px) * var(--interface-scale, 1));
+    line-height: 1.3;
+    text-transform: uppercase;
+    letter-spacing: .04em
+}
+
+.lyrics-artist-profile-card-metadata-item>span {
+    color: var(--text);
+    font-size: calc((12px) * var(--interface-scale, 1));
+    line-height: 1.4;
+    overflow-wrap: anywhere
 }
 
 .lyrics-artist-name-wrap {

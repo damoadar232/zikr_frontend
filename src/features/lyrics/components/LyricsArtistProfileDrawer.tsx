@@ -8,6 +8,7 @@ import { lyricsApi } from "../services/lyricsApiService.js";
 import type { ApiPublicLyric } from "../services/lyricsApiService.js";
 import { formatLyricDate, getLyricCategoryNames } from "../utils/lyricsPresentation";
 import { ArtistProfileAvatar } from "./ArtistProfileAvatar";
+import { LyricTitle } from "./LyricTitle";
 
 export type LyricsArtistRelationship = "reciter" | "writer";
 
@@ -100,7 +101,7 @@ export function LyricsArtistProfileDrawer({ selection, onClose, onSelectLyric }:
 
     const artistName = artist?.displayName?.trim() || artist?.fullName || selection.artistName || "Artist";
     const heading = selection.relationship === "reciter"
-        ? `Lyrics performed by ${artistName}`
+        ? `Lyrics recited by ${artistName}`
         : `Lyrics written by ${artistName}`;
 
     return createPortal(
@@ -111,7 +112,7 @@ export function LyricsArtistProfileDrawer({ selection, onClose, onSelectLyric }:
                 if (event.target === event.currentTarget) onClose();
             }}
         >
-            <aside className="lyrics-artist-drawer" role="dialog" aria-modal="true" aria-labelledby="lyrics-artist-drawer-title">
+            <aside className="lyrics-artist-drawer lyrics-artist-profile-drawer" role="dialog" aria-modal="true" aria-labelledby="lyrics-artist-drawer-title">
                 <div className="lyrics-artist-drawer-header">
                     <div className="lyrics-artist-profile">
                         <ArtistProfileAvatar imageUrl={artist ? artist.profileImageUrl : selection.profileImageUrl} size="profile" />
@@ -127,30 +128,36 @@ export function LyricsArtistProfileDrawer({ selection, onClose, onSelectLyric }:
                 </div>
                 <section className="lyrics-artist-drawer-content" aria-labelledby="lyrics-artist-content-heading">
                     <h3 id="lyrics-artist-content-heading">{heading}</h3>
+                    {!loading && !error && <p className="lyrics-artist-results-count">{totalLyrics} {totalLyrics === 1 ? "lyric" : "lyrics"}</p>}
                     {loading
                         ? <div className="lyrics-artist-drawer-state" role="status"><span className="lyrics-artist-loading-indicator" />Loading artist lyrics…</div>
                         : error
                             ? <div className="lyrics-artist-drawer-state" role="alert"><p>{error}</p><button type="button" className="btn btn-primary" onClick={() => setRetry((value) => value + 1)}>Try again</button></div>
                             : lyrics.length
-                                ? <>
-                                    <p className="lyrics-artist-results-count">{totalLyrics} {totalLyrics === 1 ? "lyric" : "lyrics"}</p>
-                                    <ol className="lyrics-artist-list">
+                                ? <ol className="lyrics-artist-profile-list">
                                         {lyrics.map((lyric, index) => (
-                                            <li key={lyric.id}>
-                                                <span className="lyrics-artist-list-number">{index + 1}</span>
-                                                {lyric.image && <img className="lyrics-artist-list-thumbnail" src={lyric.image} alt="" loading="lazy" />}
-                                                <div className="lyrics-artist-list-copy">
-                                                    <button type="button" className="lyrics-artist-list-title" onClick={() => onSelectLyric(lyric.id)}>{lyric.title}</button>
-                                                    <small>{[
-                                                        getLyricCategoryNames(lyric).join(" • "),
-                                                        lyric.languageVersions[0]?.label || "",
-                                                        lyric.createdAt ? formatLyricDate(lyric.createdAt) : "",
-                                                    ].filter(Boolean).join(" · ")}</small>
+                                            <li className="lyrics-artist-profile-card" key={lyric.id}>
+                                                <span className="lyrics-artist-profile-card-number" aria-label={`Lyric ${index + 1}`}>{index + 1}</span>
+                                                <div className="lyrics-artist-profile-card-content">
+                                                    <button type="button" className="lyrics-artist-profile-card-title" onClick={() => onSelectLyric(lyric.id)}>
+                                                        <LyricTitle title={lyric.title} />
+                                                    </button>
+                                                    <div className="lyrics-artist-profile-card-metadata">
+                                                        {[
+                                                            { label: "Category", value: getLyricCategoryNames(lyric).join(" • ") || "Uncategorized" },
+                                                            { label: "Language", value: lyric.languageVersions[0]?.label || "Unknown" },
+                                                            { label: "Published", value: lyric.createdAt ? formatLyricDate(lyric.createdAt) : "Recently published" },
+                                                        ].map(({ label, value }) => (
+                                                            <span className="lyrics-artist-profile-card-metadata-item" key={label}>
+                                                                <small>{label}</small>
+                                                                <span>{value}</span>
+                                                            </span>
+                                                        ))}
+                                                    </div>
                                                 </div>
                                             </li>
                                         ))}
                                     </ol>
-                                </>
                                 : <div className="lyrics-artist-drawer-state"><p>No lyrics found for this artist.</p></div>}
                 </section>
             </aside>
