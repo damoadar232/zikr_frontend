@@ -105,6 +105,7 @@ public final class LyricDtos {
             Long artistId,
             List<Long> artistIds,
             List<String> reciters,
+            List<Long> reciterIds,
             Long writerId,
             String writer,
             List<String> categoryIds,

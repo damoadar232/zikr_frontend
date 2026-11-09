@@ -17,6 +17,7 @@ export interface EbookAuthor {
     fullName: string;
     displayName: string | null;
     position?: number;
+    profileImageUrl?: string | null;
 }
 
 export interface EbookLanguage {
@@ -126,6 +127,8 @@ export interface EbookDeliveryLink {
 
 const publicListCache = new Map<string, EbookLibraryItem[]>();
 const publicListRequests = new Map<string, Promise<EbookLibraryItem[]>>();
+const publicAuthorPageCache = new Map<string, EbookPage>();
+const publicAuthorPageRequests = new Map<string, Promise<EbookPage>>();
 const palettes = ["emerald", "wine", "navy", "sand", "green"];
 
 function createEbookApiError(message: string, status: number, code: string) {
@@ -344,7 +347,54 @@ export function listPublicEbooks(): Promise<EbookLibraryItem[]> {
     return request;
 }
 
+export async function listPublicEbooksByAuthorId(
+    authorId: number,
+    { page = 0, size = 10 }: { page?: number; size?: number } = {},
+): Promise<{ items: EbookLibraryItem[]; page: number; size: number; totalElements: number; totalPages: number }> {
+    if (!Number.isSafeInteger(authorId) || authorId < 1) {
+        throw new RangeError("authorId must be a positive integer.");
+    }
+    if (!Number.isSafeInteger(page) || page < 0 || !Number.isSafeInteger(size) || size < 1 || size > 100) {
+        throw new RangeError("Ebook page and size are outside the supported range.");
+    }
+
+    const key = JSON.stringify({ authorId, page, size });
+    const cached = publicAuthorPageCache.get(key);
+    if (cached) {
+        return {
+            ...cached,
+            items: cached.items
+                .filter((ebook) => ebook.status === "PUBLISHED")
+                .map(toLibraryItem),
+        };
+    }
+    const existing = publicAuthorPageRequests.get(key);
+    if (existing) {
+        const result = await existing;
+        return { ...result, items: result.items.map(toLibraryItem) };
+    }
+
+    const request = publicRequest<EbookPage>(withQuery("/api/public/ebooks", {
+        page,
+        size,
+        authorId,
+    })).then((result) => {
+        publicAuthorPageCache.set(key, result);
+        return result;
+    }).finally(() => publicAuthorPageRequests.delete(key));
+    publicAuthorPageRequests.set(key, request);
+    const result = await request;
+    return {
+        ...result,
+        items: result.items
+            .filter((ebook) => ebook.status === "PUBLISHED")
+            .map(toLibraryItem),
+    };
+}
+
 export function invalidatePublicEbookCache() {
     publicListCache.clear();
     publicListRequests.clear();
+    publicAuthorPageCache.clear();
+    publicAuthorPageRequests.clear();
 }

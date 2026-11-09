@@ -22,6 +22,16 @@ export interface ApiArtistOption {
     profileImageUrl?: string | null;
 }
 
+export interface ApiPublicArtistProfile {
+    id: number;
+    artistKey: string;
+    fullName: string;
+    displayName: string | null;
+    biography: string | null;
+    roles: ApiArtistRoleCode[];
+    profileImageUrl: string | null;
+}
+
 export interface ApiArtistRoleDto { code: ApiArtistRoleCode; label: string; }
 
 export interface ApiArtistPage {
@@ -62,6 +72,7 @@ export interface ArtistsApiService {
     getRoles(): Promise<ApiArtistRoleDto[]>;
     getPublicArtistOptions(options?: ArtistOptionsParams): Promise<ApiArtistOption[]>;
     getPublicRoles(): Promise<ApiArtistRoleDto[]>;
+    getPublicArtistProfile(id: string | number): Promise<ApiPublicArtistProfile>;
 }
 
 export declare function createArtistsApi(options?: { baseUrl?: string; auth?: AdminAuthService; fetchImpl?: typeof fetch }): ArtistsApiService;

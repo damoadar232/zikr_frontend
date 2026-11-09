@@ -50,6 +50,11 @@ public interface LyricRepository extends JpaRepository<Lyric, Long> {
                       SELECT 1 FROM lyric_reciters r
                       WHERE r.lyric_id = l.id
                         AND LOWER(r.display_name) LIKE CONCAT('%', LOWER(:reciter), '%')))
+              AND (:reciterId IS NULL OR EXISTS (
+                  SELECT 1 FROM lyric_artist_ids la
+                  WHERE la.lyric_id = l.id
+                    AND la.role = 'RECITER'
+                    AND la.artist_id = :reciterId))
               AND (:poetArtistId IS NULL OR l.writer_id = :poetArtistId)
               AND (:poet IS NULL OR :poetArtistId IS NOT NULL
                    OR l.writer_id_legacy = :poet OR LOWER(l.writer_name) = LOWER(:poet)
@@ -79,6 +84,11 @@ public interface LyricRepository extends JpaRepository<Lyric, Long> {
                       SELECT 1 FROM lyric_reciters r
                       WHERE r.lyric_id = l.id
                         AND LOWER(r.display_name) LIKE CONCAT('%', LOWER(:reciter), '%')))
+              AND (:reciterId IS NULL OR EXISTS (
+                  SELECT 1 FROM lyric_artist_ids la
+                  WHERE la.lyric_id = l.id
+                    AND la.role = 'RECITER'
+                    AND la.artist_id = :reciterId))
               AND (:poetArtistId IS NULL OR l.writer_id = :poetArtistId)
               AND (:poet IS NULL OR :poetArtistId IS NOT NULL
                    OR l.writer_id_legacy = :poet OR LOWER(l.writer_name) = LOWER(:poet)
@@ -94,6 +104,7 @@ public interface LyricRepository extends JpaRepository<Lyric, Long> {
             """, nativeQuery = true)
     Page<Lyric> findPublicPage(@Param("categoryId") String categoryId,
             @Param("reciter") String reciter,
+            @Param("reciterId") Long reciterId,
             @Param("poet") String poet,
             @Param("poetArtistId") Long poetArtistId,
             @Param("languageCode") String languageCode,

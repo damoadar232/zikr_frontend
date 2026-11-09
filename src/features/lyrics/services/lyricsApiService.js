@@ -60,6 +60,10 @@ export function createLyricsApi({ baseUrl = API_BASE_URL, auth = adminAuth, fetc
         `/api/v1/admin/lyrics/${encodeURIComponent(reference)}/status`, { method: "PATCH", body: { status } });
     const deleteLyric = (reference) => request(`/api/v1/admin/lyrics/${encodeURIComponent(reference)}`, { method: "DELETE" });
     const listPublicLyrics = (options = {}) => request(`/api/v1/lyrics${queryString(options)}`, { authenticated: false });
+    const listPublicLyricsByReciter = (artistId, { page = 0, size = 10 } = {}) =>
+        listPublicLyrics({ page, size, reciterId: artistId });
+    const listPublicLyricsByWriter = (artistId, { page = 0, size = 10 } = {}) =>
+        listPublicLyrics({ page, size, poet: artistId });
     const listPublicSubjects = () => request("/api/v1/lyrics/subjects", { authenticated: false });
     const listAllPublicLyrics = async ({ size = 100, ...filters } = {}) => {
         const firstPage = await listPublicLyrics({ ...filters, page: 0, size });
@@ -81,6 +85,8 @@ export function createLyricsApi({ baseUrl = API_BASE_URL, auth = adminAuth, fetc
         listAdminLyrics,
         listAdminSubjects,
         listPublicLyrics,
+        listPublicLyricsByReciter,
+        listPublicLyricsByWriter,
         listPublicSubjects,
         listAllPublicLyrics,
         getPublicLyric,

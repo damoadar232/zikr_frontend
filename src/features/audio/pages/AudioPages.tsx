@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import type { AudioRecord } from "../../../audioData.js";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { AudioArtistCredit, AudioRecord } from "../../../audioData.js";
 import { LocalizedText, interfaceAttributeText } from "../../../app/providers/interfaceLanguage";
 import { getRouteQueryParam } from "../../../app/utils/getRouteQueryParam";
 import { getUserFacingError } from "../../../app/notifications/toastStore.js";
@@ -7,6 +7,8 @@ import { Breadcrumbs, DirectoryHeader, SearchBox, Tabs } from "../../../componen
 import { SectionHead } from "../../../components/common/SectionHead";
 import { Btn, Icon } from "../../../components/ui";
 import { AudioCard, getAudioCategoryLabel } from "../components/AudioCard";
+import { AudioArtistLinks } from "../components/AudioArtistLinks";
+import { AudioArtistProfileDrawer, type AudioArtistSelection } from "../components/AudioArtistProfileDrawer";
 import { SpotifyTrackGrid } from "../components/SpotifyTrackGrid";
 import {
     getPublicAudio,
@@ -42,6 +44,16 @@ export function AudioPage({ go, onPlayAudio, onPauseAudio, onDownloadAudio, onTr
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [retry, setRetry] = useState(0);
+    const [artistSelection, setArtistSelection] = useState<AudioArtistSelection | null>(null);
+
+    const openArtistProfile = useCallback((credit: AudioArtistCredit) => {
+        setArtistSelection({
+            artistId: credit.id,
+            artistName: credit.displayName?.trim() || credit.fullName,
+            profileImageUrl: credit.profileImageUrl,
+        });
+    }, []);
+    const closeArtistProfile = useCallback(() => setArtistSelection(null), []);
 
     useEffect(() => {
         let active = true;
@@ -94,9 +106,18 @@ export function AudioPage({ go, onPlayAudio, onPauseAudio, onDownloadAudio, onTr
             <SectionHead eyebrow={`${tracks.length} tracks • newest first`} title={interfaceAttributeText("Latest Audio")} />
             {loading ? <div className="empty" role="status"><p><LocalizedText text={"Loading audio…"} /></p></div>
                 : error ? <div className="empty" role="alert"><Icon name="headphones" size={32} /><h3><LocalizedText text={"Audio could not be loaded"} /></h3><p>{error}</p><button className="btn btn-primary" onClick={() => setRetry((current) => current + 1)}><LocalizedText text={"Try again"} /></button></div>
-                    : tracks.length ? <div className="audio-grid light">{tracks.map((track, index) => <AudioCard key={track.id} item={track} index={index} onClick={() => { onPlayAudio(track); go(`audio-detail?id=${encodeURIComponent(track.id)}`); }} onPlay={onPlayAudio} onPause={onPauseAudio} onDownload={onDownloadAudio} activeAudioId={activeAudioId || ""} isAudioPlaying={isAudioPlaying} />)}</div>
+                    : tracks.length ? <div className="audio-grid light">{tracks.map((track, index) => <AudioCard key={track.id} item={track} index={index} onClick={() => { onPlayAudio(track); go(`audio-detail?id=${encodeURIComponent(track.id)}`); }} onPlay={onPlayAudio} onPause={onPauseAudio} onDownload={onDownloadAudio} onArtistSelect={openArtistProfile} activeAudioId={activeAudioId || ""} isAudioPlaying={isAudioPlaying} />)}</div>
                         : <div className="empty"><Icon name="search" size={32} /><h3><LocalizedText text={"No audio matches that search."} /></h3><p><LocalizedText text={"Try another title, reciter name, or category filter."} /></p><button className="btn btn-primary" onClick={() => { setSearch(""); setCategoryKey(""); }}><LocalizedText text={"Clear filters"} /></button></div>}
         </section>
+        {artistSelection && <AudioArtistProfileDrawer
+            selection={artistSelection}
+            onClose={closeArtistProfile}
+            onSelectAudio={(audio) => {
+                closeArtistProfile();
+                onPlayAudio(audio);
+                go(`audio-detail?id=${encodeURIComponent(audio.id)}`);
+            }}
+        />}
     </main>;
 }
 
@@ -108,10 +129,20 @@ export function AudioDetail({ go, onPlayAudio, onPauseAudio, onDownloadAudio, on
     const [error, setError] = useState("");
     const [notFound, setNotFound] = useState(false);
     const [retry, setRetry] = useState(0);
+    const [artistSelection, setArtistSelection] = useState<AudioArtistSelection | null>(null);
+    const openArtistProfile = useCallback((credit: AudioArtistCredit) => {
+        setArtistSelection({
+            artistId: credit.id,
+            artistName: credit.displayName?.trim() || credit.fullName,
+            profileImageUrl: credit.profileImageUrl,
+        });
+    }, []);
+    const closeArtistProfile = useCallback(() => setArtistSelection(null), []);
 
     useEffect(() => {
         let active = true;
         setTrack(null);
+        setArtistSelection(null);
         setLoading(true);
         setError("");
         setNotFound(false);
@@ -163,11 +194,15 @@ export function AudioDetail({ go, onPlayAudio, onPauseAudio, onDownloadAudio, on
         go(`audio-detail?id=${encodeURIComponent(item.id)}`);
     };
 
-    const artistMetadata = [
-        track.artist,
-        track.writers?.length ? `Written by ${track.writers.join(", ")}` : "",
-        track.language || "",
-    ].filter(Boolean).join(" · ");
-
-    return <main className="reading-bg"><div className="container"><Breadcrumbs items={["Audio", track.title]} go={go} /><div className="audio-detail"><div className={`audio-art ${track.color} large`}><img src={track.image} alt="" loading="lazy" /><span className="media-overlay" /><div className="arch-art"><span>ذِكْر</span></div><button className="play-btn" onClick={toggleTrackPlayback} aria-label={trackIsPlaying ? "Pause audio" : `Play ${track.title}`}>{trackIsPlaying ? <span className="pause">Ⅱ</span> : <Icon name="play" />}</button></div><div><span className="badge">{getAudioCategoryLabel(track)}</span><h1>{track.title}</h1><p className="lead"><LocalizedText text={"Recited by"} trailing=" " />{artistMetadata}</p><div className="detail-meta"><span><small><LocalizedText text={"PUBLISHED"} /></small>{formatPublishedDate(track.date)}</span><span><small><LocalizedText text={"DURATION"} /></small>{track.duration}</span></div><div className="player"><button className="play-main" onClick={toggleTrackPlayback} aria-label={trackIsPlaying ? "Pause audio" : `Play ${track.title}`}>{trackIsPlaying ? <span>Ⅱ</span> : <Icon name="play" size={24} />}</button><span>0:00</span><input type="range" min="0" max="100" defaultValue="0" aria-label={interfaceAttributeText("Audio progress")} /><span>{track.duration}</span><Icon name="volume" /></div><p className="prototype-note">Audio stream is available for public preview.</p><p className="audio-description">{track.description}</p><div className="button-row"><Btn variant="outline" icon="share" onClick={() => navigator.share?.({ title: track.title, url: `${window.location.origin}${window.location.pathname}#audio-detail?id=${track.id}` })}><LocalizedText text={"Share"} /></Btn><Btn variant="outline" icon="download" disabled><LocalizedText text={"Download locked"} /></Btn></div></div></div><section className="related"><SectionHead title={interfaceAttributeText("Related Audio")} action="View All Audio" onAction={() => go("audio")} /><div className="audio-grid light">{moreAudio.map((item, index) => <AudioCard key={item.id} item={item} index={index} onClick={() => playRelatedTrack(item)} onPlay={onPlayAudio} onPause={onPauseAudio} onDownload={onDownloadAudio} activeAudioId={activeAudioId || ""} isAudioPlaying={isAudioPlaying} />)}</div></section></div></main>;
+    return <>
+        <main className="reading-bg"><div className="container"><Breadcrumbs items={["Audio", track.title]} go={go} /><div className="audio-detail"><div className={`audio-art ${track.color} large`}><img src={track.image} alt="" loading="lazy" /><span className="media-overlay" /><div className="arch-art"><span>ذِكْر</span></div><button className="play-btn" onClick={toggleTrackPlayback} aria-label={trackIsPlaying ? "Pause audio" : `Play ${track.title}`}>{trackIsPlaying ? <span className="pause">Ⅱ</span> : <Icon name="play" />}</button></div><div><span className="badge">{getAudioCategoryLabel(track)}</span><h1>{track.title}</h1><p className="lead"><LocalizedText text={"Recited by"} trailing=" " /><AudioArtistLinks credits={track.singerCredits} fallbackName={track.artist} onArtistSelect={openArtistProfile} />{track.writers?.length ? <> · Written by {track.writers.join(", ")}</> : null}{track.language ? <> · {track.language}</> : null}</p><div className="detail-meta"><span><small><LocalizedText text={"PUBLISHED"} /></small>{formatPublishedDate(track.date)}</span><span><small><LocalizedText text={"DURATION"} /></small>{track.duration}</span></div><div className="player"><button className="play-main" onClick={toggleTrackPlayback} aria-label={trackIsPlaying ? "Pause audio" : `Play ${track.title}`}>{trackIsPlaying ? <span>Ⅱ</span> : <Icon name="play" size={24} />}</button><span>0:00</span><input type="range" min="0" max="100" defaultValue="0" aria-label={interfaceAttributeText("Audio progress")} /><span>{track.duration}</span><Icon name="volume" /></div><p className="prototype-note">Audio stream is available for public preview.</p><p className="audio-description">{track.description}</p><div className="button-row"><Btn variant="outline" icon="share" onClick={() => navigator.share?.({ title: track.title, url: `${window.location.origin}${window.location.pathname}#audio-detail?id=${track.id}` })}><LocalizedText text={"Share"} /></Btn><Btn variant="outline" icon="download" disabled><LocalizedText text={"Download locked"} /></Btn></div></div></div><section className="related"><SectionHead title={interfaceAttributeText("Related Audio")} action="View All Audio" onAction={() => go("audio")} /><div className="audio-grid light">{moreAudio.map((item, index) => <AudioCard key={item.id} item={item} index={index} onClick={() => playRelatedTrack(item)} onPlay={onPlayAudio} onPause={onPauseAudio} onDownload={onDownloadAudio} onArtistSelect={openArtistProfile} activeAudioId={activeAudioId || ""} isAudioPlaying={isAudioPlaying} />)}</div></section></div></main>
+        {artistSelection && <AudioArtistProfileDrawer
+            selection={artistSelection}
+            onClose={closeArtistProfile}
+            onSelectAudio={(audio) => {
+                closeArtistProfile();
+                playRelatedTrack(audio);
+            }}
+        />}
+    </>;
 }

@@ -16,7 +16,27 @@ export type AudioRecord = {
     downloadable: boolean;
     isDemo?: boolean;
     relatedLyrics?: string[];
+    singers?: string[];
+    singerCredits?: AudioArtistCredit[];
+    writers?: string[];
     [key: string]: any;
+};
+
+export type AudioArtistCredit = {
+    id: number;
+    artistKey: string;
+    fullName: string;
+    displayName: string | null;
+    position: number;
+    profileImageUrl?: string | null;
+};
+
+export type AudioPage = {
+    items: AudioRecord[];
+    page: number;
+    size: number;
+    totalElements: number;
+    totalPages: number;
 };
 
 export const audioCategories: Array<{ id: string; name: string }>;

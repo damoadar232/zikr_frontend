@@ -85,6 +85,10 @@ export function createArtistsApi({ baseUrl = API_BASE_URL, auth = adminAuth, fet
     const getRoles = () => request(`/api/v1/admin/artists/roles`);
     const getPublicArtistOptions = (options = {}) => request(`/api/v1/artists/options${queryString(options)}`, { authenticated: false });
     const getPublicRoles = () => request(`/api/v1/artists/roles`, { authenticated: false });
+    const getPublicArtistProfile = (id) => request(
+        `/api/v1/artists/${encodeURIComponent(id)}`,
+        { authenticated: false },
+    );
 
     return {
         getArtists: listArtists,
@@ -103,6 +107,7 @@ export function createArtistsApi({ baseUrl = API_BASE_URL, auth = adminAuth, fet
         getRoles,
         getPublicArtistOptions,
         getPublicRoles,
+        getPublicArtistProfile,
     };
 }
 

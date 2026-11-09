@@ -8,11 +8,14 @@ import { Breadcrumbs, DirectoryHeader, SearchBox, Tabs } from "../../../componen
 import { SectionHead } from "../../../components/common/SectionHead";
 import { Btn, Icon } from "../../../components/ui";
 import { BookCard } from "../components/BookCard";
+import { EbookAuthorLinks } from "../components/EbookAuthorLinks";
+import { EbookAuthorProfileDrawer, type EbookAuthorSelection } from "../components/EbookAuthorProfileDrawer";
 import {
     getPublicEbook,
     getPublicEbookReadLink,
     listPublicEbooks,
     type EbookLibraryItem,
+    type EbookAuthor,
 } from "../services/ebooksApiService";
 
 pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker;
@@ -32,6 +35,17 @@ export function Ebooks({ go, onDownloadBook }: { go: (route: string) => void; on
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [retry, setRetry] = useState(0);
+    const [authorSelection, setAuthorSelection] = useState<EbookAuthorSelection | null>(null);
+
+    const openAuthorProfile = useCallback((author: EbookAuthor) => {
+        if (!Number.isSafeInteger(author.id) || author.id < 1) return;
+        setAuthorSelection({
+            artistId: author.id,
+            artistName: author.displayName?.trim() || author.fullName,
+            profileImageUrl: author.profileImageUrl,
+        });
+    }, []);
+    const closeAuthorProfile = useCallback(() => setAuthorSelection(null), []);
 
     useEffect(() => {
         let active = true;
@@ -60,7 +74,33 @@ export function Ebooks({ go, onDownloadBook }: { go: (route: string) => void; on
         });
     }, [books, search, tab]);
 
-    return <main><DirectoryHeader go={go} title={interfaceAttributeText("Islamic E-Books Library")} text="A considered collection of devotional literature for reading, reflection, and learning." /><div className="container directory-controls"><div className="lyrics-search-row"><SearchBox value={search} setValue={setSearch} placeholder={interfaceAttributeText("Search books or authors")} /></div><Tabs items={categories} active={tab} setActive={setTab} /></div><section className="section container"><SectionHead eyebrow={`${filteredBooks.length} books • newest first`} title={interfaceAttributeText("Latest Uploads")} />{loading ? <div className="empty" role="status"><p><LocalizedText text={"Loading ebooks…"} /></p></div> : error ? <div className="empty" role="alert"><p>{error}</p><button className="btn btn-primary" onClick={() => setRetry((value) => value + 1)}><LocalizedText text={"Try again"} /></button></div> : filteredBooks.length ? <div className="book-grid">{filteredBooks.map((book, index) => <BookCard item={book} index={index} key={book.id} onClick={() => go(`book-detail?id=${book.id}`)} onDownload={onDownloadBook} />)}</div> : <div className="empty"><Icon name="book" size={32} /><h3><LocalizedText text={"No books match that search or category."} /></h3><p><LocalizedText text={"Try another keyword or reset the filter to browse the latest titles."} /></p><button className="btn btn-primary" onClick={() => { setSearch(""); setTab("All Books"); }}><LocalizedText text={"Clear filters"} /></button></div>}</section></main>;
+    return <>
+        <main>
+            <DirectoryHeader go={go} title={interfaceAttributeText("Islamic E-Books Library")} text="A considered collection of devotional literature for reading, reflection, and learning." />
+            <div className="container directory-controls">
+                <div className="lyrics-search-row"><SearchBox value={search} setValue={setSearch} placeholder={interfaceAttributeText("Search books or authors")} /></div>
+                <Tabs items={categories} active={tab} setActive={setTab} />
+            </div>
+            <section className="section container">
+                <SectionHead eyebrow={`${filteredBooks.length} books • newest first`} title={interfaceAttributeText("Latest Uploads")} />
+                {loading
+                    ? <div className="empty" role="status"><p><LocalizedText text={"Loading ebooks…"} /></p></div>
+                    : error
+                        ? <div className="empty" role="alert"><p>{error}</p><button className="btn btn-primary" onClick={() => setRetry((value) => value + 1)}><LocalizedText text={"Try again"} /></button></div>
+                        : filteredBooks.length
+                            ? <div className="book-grid">{filteredBooks.map((book, index) => <BookCard item={book} index={index} key={book.id} onClick={() => go(`book-detail?id=${book.id}`)} onDownload={onDownloadBook} onAuthorSelect={openAuthorProfile} />)}</div>
+                            : <div className="empty"><Icon name="book" size={32} /><h3><LocalizedText text={"No books match that search or category."} /></h3><p><LocalizedText text={"Try another keyword or reset the filter to browse the latest titles."} /></p><button className="btn btn-primary" onClick={() => { setSearch(""); setTab("All Books"); }}><LocalizedText text={"Clear filters"} /></button></div>}
+            </section>
+        </main>
+        {authorSelection && <EbookAuthorProfileDrawer
+            selection={authorSelection}
+            onClose={closeAuthorProfile}
+            onSelectEbook={(ebookId) => {
+                closeAuthorProfile();
+                go(`book-detail?id=${encodeURIComponent(ebookId)}`);
+            }}
+        />}
+    </>;
 }
 
 export function BookDetail({ go, onDownloadBook }: { go: (route: string) => void; onDownloadBook: (book: EbookLibraryItem) => void }) {
@@ -72,6 +112,16 @@ export function BookDetail({ go, onDownloadBook }: { go: (route: string) => void
     const [loadError, setLoadError] = useState("");
     const [notFound, setNotFound] = useState(false);
     const [retry, setRetry] = useState(0);
+    const [authorSelection, setAuthorSelection] = useState<EbookAuthorSelection | null>(null);
+    const openAuthorProfile = useCallback((author: EbookAuthor) => {
+        if (!Number.isSafeInteger(author.id) || author.id < 1) return;
+        setAuthorSelection({
+            artistId: author.id,
+            artistName: author.displayName?.trim() || author.fullName,
+            profileImageUrl: author.profileImageUrl,
+        });
+    }, []);
+    const closeAuthorProfile = useCallback(() => setAuthorSelection(null), []);
 
     useEffect(() => {
         let active = true;
@@ -118,7 +168,55 @@ export function BookDetail({ go, onDownloadBook }: { go: (route: string) => void
     const accessLabel = t("Read and download online");
     const categoryLabel = book.categories.map((category) => category.name).join(" • ");
 
-    return <main className="reading-bg"><div className="container"><Breadcrumbs items={["E-Books", book.title]} go={go} /><div className="book-detail"><div className={`book-cover ${book.color} large-cover`}>{book.coverImageUrl && <img className="book-cover-image" src={book.coverImageUrl} alt={`${book.title} cover`} />}<span className="cover-ornament">۞</span><small><LocalizedText text={"ZIKR-E-ILAHI LIBRARY"} /></small><b>{book.title}</b><i>{book.author}</i></div><div><span className="badge">{t(categoryLabel)}</span><h1>{book.title}</h1><p className="lead">{book.author}</p><div className="detail-meta"><span><small><LocalizedText text={"LANGUAGE"} /></small>{book.language}</span><span><small><LocalizedText text={"FORMAT"} /></small>{book.format}</span><span><small><LocalizedText text={"ACCESS"} /></small>{accessLabel}</span></div><h3><LocalizedText text={"About this book"} /></h3><p>{book.description}</p><div className="detail-meta"><span><small><LocalizedText text={"CATEGORIES"} /></small>{categoryLabel}</span><span><small><LocalizedText text={"PUBLISHED"} /></small>{book.publishedDate || "—"}</span><span><small><LocalizedText text={"AUTHORS"} /></small>{book.author || "—"}</span></div><div className="button-row"><Btn onClick={() => go(`book-reader?id=${book.id}`)} icon="book"><LocalizedText text={"Read Online"} /></Btn><Btn variant="outline" icon="download" onClick={() => onDownloadBook(book)}>Download PDF</Btn></div></div></div><section className="related"><SectionHead title={interfaceAttributeText("Related Books")} /><div className="book-grid">{relatedBooks.map((item, index) => <BookCard item={item} index={index} key={item.id} onClick={() => go(`book-detail?id=${item.id}`)} onDownload={onDownloadBook} />)}</div></section></div></main>;
+    return <>
+        <main className="reading-bg">
+            <div className="container">
+                <Breadcrumbs items={["E-Books", book.title]} go={go} />
+                <div className="book-detail">
+                    <div className={`book-cover ${book.color} large-cover`}>
+                        {book.coverImageUrl && <img className="book-cover-image" src={book.coverImageUrl} alt={`${book.title} cover`} />}
+                        <span className="cover-ornament">۞</span>
+                        <small><LocalizedText text={"ZIKR-E-ILAHI LIBRARY"} /></small>
+                        <b>{book.title}</b>
+                        <i><EbookAuthorLinks authors={book.authors} fallbackName={book.author} onAuthorSelect={openAuthorProfile} /></i>
+                    </div>
+                    <div>
+                        <span className="badge">{t(categoryLabel)}</span>
+                        <h1>{book.title}</h1>
+                        <p className="lead"><EbookAuthorLinks authors={book.authors} fallbackName={book.author} onAuthorSelect={openAuthorProfile} /></p>
+                        <div className="detail-meta">
+                            <span><small><LocalizedText text={"LANGUAGE"} /></small>{book.language}</span>
+                            <span><small><LocalizedText text={"FORMAT"} /></small>{book.format}</span>
+                            <span><small><LocalizedText text={"ACCESS"} /></small>{accessLabel}</span>
+                        </div>
+                        <h3><LocalizedText text={"About this book"} /></h3>
+                        <p>{book.description}</p>
+                        <div className="detail-meta">
+                            <span><small><LocalizedText text={"CATEGORIES"} /></small>{categoryLabel}</span>
+                            <span><small><LocalizedText text={"PUBLISHED"} /></small>{book.publishedDate || "—"}</span>
+                            <span><small><LocalizedText text={"AUTHORS"} /></small><EbookAuthorLinks authors={book.authors} fallbackName={book.author || "—"} onAuthorSelect={openAuthorProfile} /></span>
+                        </div>
+                        <div className="button-row">
+                            <Btn onClick={() => go(`book-reader?id=${book.id}`)} icon="book"><LocalizedText text={"Read Online"} /></Btn>
+                            <Btn variant="outline" icon="download" onClick={() => onDownloadBook(book)}>Download PDF</Btn>
+                        </div>
+                    </div>
+                </div>
+                <section className="related">
+                    <SectionHead title={interfaceAttributeText("Related Books")} />
+                    <div className="book-grid">{relatedBooks.map((item, index) => <BookCard item={item} index={index} key={item.id} onClick={() => go(`book-detail?id=${item.id}`)} onDownload={onDownloadBook} onAuthorSelect={openAuthorProfile} />)}</div>
+                </section>
+            </div>
+        </main>
+        {authorSelection && <EbookAuthorProfileDrawer
+            selection={authorSelection}
+            onClose={closeAuthorProfile}
+            onSelectEbook={(ebookId) => {
+                closeAuthorProfile();
+                go(`book-detail?id=${encodeURIComponent(ebookId)}`);
+            }}
+        />}
+    </>;
 }
 
 export function BookReader({ go }: { go: (route: string) => void }) {

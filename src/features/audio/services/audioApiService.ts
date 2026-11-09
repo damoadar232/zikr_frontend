@@ -1,6 +1,6 @@
 import { API_BASE_URL, requireApiBaseUrl } from "../../../app/config/apiBase.js";
 import { adminAuth } from "../../auth/services/adminAuth.js";
-import type { AudioRecord } from "../../../audioData.js";
+import type { AudioArtistCredit, AudioPage, AudioRecord } from "../../../audioData.js";
 
 export type AudioStatus = "DRAFT" | "PUBLISHED" | "INACTIVE";
 
@@ -34,6 +34,7 @@ interface ApiArtistCredit {
     fullName: string;
     displayName: string | null;
     position: number;
+    profileImageUrl?: string | null;
 }
 
 interface ApiAudioCategory extends AudioCategoryOption {
@@ -123,6 +124,8 @@ export interface AudioMetadata {
 
 const publicListCache = new Map<string, AudioRecord[]>();
 const publicListRequests = new Map<string, Promise<AudioRecord[]>>();
+const publicArtistPageCache = new Map<string, AudioPage>();
+const publicArtistPageRequests = new Map<string, Promise<AudioPage>>();
 let publicCategoryCache: AudioCategoryOption[] | null = null;
 let publicCategoryRequest: Promise<AudioCategoryOption[]> | null = null;
 
@@ -139,6 +142,14 @@ function artistName(artist: ApiArtistCredit) {
 }
 
 function toAudioRecord(audio: ApiAudio): AudioRecord {
+    const singerCredits: AudioArtistCredit[] = audio.singers.map((artist) => ({
+        id: artist.id,
+        artistKey: artist.artistKey,
+        fullName: artist.fullName,
+        displayName: artist.displayName,
+        position: artist.position,
+        profileImageUrl: artist.profileImageUrl,
+    }));
     return {
         id: String(audio.id),
         title: audio.title,
@@ -153,6 +164,7 @@ function toAudioRecord(audio: ApiAudio): AudioRecord {
         downloadable: false,
         isDemo: false,
         singers: audio.singers.map(artistName),
+        singerCredits,
         writers: audio.writers.map(artistName),
         language: audio.language.name,
         languageCode: audio.language.code,
@@ -266,6 +278,42 @@ export async function listPublicAudios(params: { query?: string; categoryKey?: s
         })
         .finally(() => publicListRequests.delete(key));
     publicListRequests.set(key, request);
+    return request;
+}
+
+export async function listPublicAudiosByArtistId(
+    artistId: number,
+    { page = 0, size = 10 }: { page?: number; size?: number } = {},
+): Promise<AudioPage> {
+    if (!Number.isSafeInteger(artistId) || artistId < 1) {
+        throw new RangeError("artistId must be a positive integer.");
+    }
+    if (!Number.isSafeInteger(page) || page < 0 || !Number.isSafeInteger(size) || size < 1 || size > 100) {
+        throw new RangeError("Audio page and size are outside the supported range.");
+    }
+
+    const key = JSON.stringify({ artistId, page, size });
+    const cached = publicArtistPageCache.get(key);
+    if (cached) return cached;
+
+    const existing = publicArtistPageRequests.get(key);
+    if (existing) return existing;
+
+    const request = publicRequest<ApiPage<ApiAudio>>(withQuery("/api/public/audios", {
+        artistId,
+        page,
+        size,
+        sort: "publishedDate",
+        direction: "DESC",
+    })).then((result) => {
+        const artistPage: AudioPage = {
+            ...result,
+            items: result.items.map(toAudioRecord),
+        };
+        publicArtistPageCache.set(key, artistPage);
+        return artistPage;
+    }).finally(() => publicArtistPageRequests.delete(key));
+    publicArtistPageRequests.set(key, request);
     return request;
 }
 
@@ -391,4 +439,6 @@ export async function deleteAdminAudio(id: string) {
 export function invalidateAudioListCache() {
     publicListCache.clear();
     publicListRequests.clear();
+    publicArtistPageCache.clear();
+    publicArtistPageRequests.clear();
 }

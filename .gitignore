@@ -68,9 +68,12 @@ backend/*.war
 /backend/src/main/java/com/zikrelahi/api/*
 !/backend/src/main/java/com/zikrelahi/api/artists/
 /backend/src/main/java/com/zikrelahi/api/artists/*
+!/backend/src/main/java/com/zikrelahi/api/artists/PublicArtistController.java
 !/backend/src/main/java/com/zikrelahi/api/artists/ArtistProfileImageService.java
 !/backend/src/main/java/com/zikrelahi/api/lyrics/
 /backend/src/main/java/com/zikrelahi/api/lyrics/*
+!/backend/src/main/java/com/zikrelahi/api/lyrics/PublicLyricController.java
+!/backend/src/main/java/com/zikrelahi/api/lyrics/PublicLyricService.java
 !/backend/src/main/java/com/zikrelahi/api/lyrics/LyricRelations.java
 !/backend/src/main/java/com/zikrelahi/api/books/
 /backend/src/main/java/com/zikrelahi/api/books/*
@@ -183,6 +186,7 @@ backend/*.war
 !/backend/docs/
 /backend/docs/*
 !/backend/docs/quran-admin-api.md
+!/backend/docs/audio-api.md
 
 # Audio management API and media verification tests
 !/backend/src/test/java/com/zikrelahi/api/audio/

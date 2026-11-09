@@ -70,7 +70,8 @@ public class LyricDtoAssembler {
         List<MediaReferenceDto> audio = mediaOfType(relations, LyricMediaType.AUDIO);
         List<MediaReferenceDto> video = mediaOfType(relations, LyricMediaType.VIDEO);
         return new PublicLyricDto(lyric.getLegacyId(), lyric.getTitle(), lyric.getSlug(), lyric.getArtistId(),
-                relations.artistIds(), relations.reciters(), lyric.getWriterId(), lyric.getWriterName(),
+                relations.artistIds(), relations.reciters(), relations.reciterIds(),
+                lyric.getWriterId(), lyric.getWriterName(),
                 relations.categoryIds(), relations.subjectIds(), relations.tags(), lyric.getBookId(),
                 lyric.getCoverImageUrl(), lyric.isFeatured(), lyric.getCreatedAt(),
                 versions.stream().map(this::toPublicVersion).toList(), audio, video,

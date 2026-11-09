@@ -73,6 +73,20 @@ public class AdminArtistService {
         return toDto(findOrThrow(id));
     }
 
+    @Transactional(readOnly = true)
+    public ArtistDtos.PublicArtistProfileDto getPublicProfile(Long id) {
+        Artist artist = artistRepository.findByIdAndStatus(id, ArtistStatus.ACTIVE)
+                .orElseThrow(() -> new ResourceNotFoundException("Artist not found."));
+        return new ArtistDtos.PublicArtistProfileDto(
+                artist.getId(),
+                artist.getArtistKey(),
+                artist.getFullName(),
+                artist.getDisplayName(),
+                artist.getBiography(),
+                artist.getRoles().stream().map(Enum::name).sorted().toList(),
+                artist.getProfileImageUrl());
+    }
+
     @Transactional
     public ProfileImageChange updateProfileImage(String id, MediaUploadResult media) {
         Artist artist = findOrThrow(id);

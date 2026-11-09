@@ -16,20 +16,22 @@ import { AboutPage } from "./features/about/pages/AboutPage";
 import { ContactPage } from "./features/contact/pages/ContactPage";
 import { AuthPage } from "./features/auth/pages/AuthPage";
 import { AudioPage, AudioDetail } from "./features/audio/pages/AudioPages";
+import { AudioArtistLinks } from "./features/audio/components/AudioArtistLinks";
+import { AudioArtistProfileDrawer, type AudioArtistSelection } from "./features/audio/components/AudioArtistProfileDrawer";
 import { Ebooks, BookDetail, BookReader } from "./features/ebooks/pages/EbookPages";
 import { AudioCard, getAudioCategoryLabel } from "./features/audio/components/AudioCard";
 import { LyricTitle } from "./features/lyrics/components/LyricTitle";
-import { ArtistProfileAvatar } from "./features/lyrics/components/ArtistProfileAvatar";
-import { ReciterDisclosure } from "./features/lyrics/components/ReciterDisclosure";
+import { ReciterArtistLinks, WriterArtistLink } from "./features/lyrics/components/LyricsArtistLinks";
+import { LyricsArtistProfileDrawer, type LyricsArtistRelationship, type LyricsArtistSelection } from "./features/lyrics/components/LyricsArtistProfileDrawer";
 import { YouTubeVideoGrid } from "./features/lyrics/components/YouTubeVideoGrid";
 import { LyricsPage, lyricsRoutePaths } from "./features/lyrics/pages/LyricsPage";
 import { QuranHome, ParaPage, QuranTopics, SurahDirectory, SurahRead } from "./features/quran/pages/QuranPages";
-import { formatLyricDate, getLyricArtistNames, getLyricBookName, getLyricCategoryNames, getLyricWriterName, getLyricWriterProfile } from "./features/lyrics/utils/lyricsPresentation";
+import { formatLyricDate, getLyricBookName, getLyricCategoryNames, getLyricWriterName } from "./features/lyrics/utils/lyricsPresentation";
 import { getRouteQueryParam } from "./app/utils/getRouteQueryParam";
 import { lyricsApi } from "./features/lyrics/services/lyricsApiService.js";
 import type { ApiPublicLyric } from "./features/lyrics/services/lyricsApiService.js";
 import { getAudioById } from "./audioData";
-import type { AudioRecord } from "./audioData.js";
+import type { AudioArtistCredit, AudioRecord } from "./audioData.js";
 import { clearPendingAction, createPendingAction, readPendingAction, savePendingAction, safeReturnTo } from "./authActions.js";
 import { adminAuth } from "./features/auth/services/adminAuth.js";
 import { notify } from "./app/notifications/toastStore.js";
@@ -210,6 +212,7 @@ function formatAudioTime(totalSeconds: number) {
 function PersistentAudioPlayer({
   track,
   tracks,
+  go,
   audioRef,
   isPlaying,
   onPlayAudio,
@@ -221,6 +224,7 @@ function PersistentAudioPlayer({
 }: {
   track: AudioRecord | null;
   tracks: AudioRecord[];
+  go: (route: string) => void;
   audioRef: { current: HTMLAudioElement | null };
   isPlaying: boolean;
   onPlayAudio: (track: AudioRecord) => void;
@@ -232,6 +236,15 @@ function PersistentAudioPlayer({
 }) {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [artistSelection, setArtistSelection] = useState<AudioArtistSelection | null>(null);
+  const openArtistProfile = useCallback((credit: AudioArtistCredit) => {
+    setArtistSelection({
+      artistId: credit.id,
+      artistName: credit.displayName?.trim() || credit.fullName,
+      profileImageUrl: credit.profileImageUrl,
+    });
+  }, []);
+  const closeArtistProfile = useCallback(() => setArtistSelection(null), []);
 
   useEffect(() => {
     setCurrentTime(0);
@@ -273,7 +286,7 @@ function PersistentAudioPlayer({
       }}
     />
     {track && <div className="shared-audio-player" role="region" aria-label={interfaceAttributeText("Persistent audio player")}>
-      <div className="shared-player-meta"><b>{track.title}</b><small>{track.artist}</small></div>
+      <div className="shared-player-meta"><b>{track.title}</b><small><AudioArtistLinks credits={track.singerCredits} fallbackName={track.artist} onArtistSelect={openArtistProfile} /></small></div>
       <div className="shared-player-controls">
         <button aria-label={interfaceAttributeText("Previous track")} disabled={!previousTrack} onClick={() => previousTrack && onPlayAudio(previousTrack)}>{"‹"}</button>
         <button aria-label={interfaceAttributeText(isPlaying ? "Pause audio" : "Play audio")} className="main" onClick={() => isPlaying ? onPauseAudio() : onPlayAudio(track)}>{isPlaying ? "Ⅱ" : <Icon name="play" size={18} />}</button>
@@ -289,6 +302,15 @@ function PersistentAudioPlayer({
       <div className="shared-player-close"><button aria-label={interfaceAttributeText("Close player")} className="close-player" onClick={onClose}>×</button></div>
       {playbackError && <div className="player-error"><LocalizedText text={playbackError} /></div>}
     </div>}
+    {artistSelection && <AudioArtistProfileDrawer
+      selection={artistSelection}
+      onClose={closeArtistProfile}
+      onSelectAudio={(audio) => {
+        closeArtistProfile();
+        onPlayAudio(audio);
+        go(`audio-detail?id=${encodeURIComponent(audio.id)}`);
+      }}
+    />}
   </>;
 }
 
@@ -302,10 +324,12 @@ function LyricDetail({ go }: { go: (r: Route) => void }) {
   const [notFound, setNotFound] = useState(false);
   const [retry, setRetry] = useState(0);
   const [selectedLanguage, setSelectedLanguage] = useState("");
+  const [artistSelection, setArtistSelection] = useState<LyricsArtistSelection | null>(null);
 
   useEffect(() => {
     let active = true;
     setLyric(null);
+    setArtistSelection(null);
     setLoading(true);
     setLoadError("");
     setNotFound(false);
@@ -340,13 +364,23 @@ function LyricDetail({ go }: { go: (r: Route) => void }) {
   const version = lyric.languageVersions.find((entry) => entry.code === selectedLanguage) || lyric.languageVersions[0];
   const versionText = version?.text || "";
   const writerName = getLyricWriterName(lyric);
-  const writerProfile = getLyricWriterProfile(lyric);
   const categoryNames = getLyricCategoryNames(lyric).map(t);
   const bookName = getLyricBookName(lyric);
   const subjectName = lyric.subjectIds?.[0] ? lyricSubjects.find((subject) => subject.id === lyric.subjectIds[0])?.name : undefined;
+  const openArtistDrawer = (artistId: number, relationship: LyricsArtistRelationship) => {
+    const profile = lyric.artistProfiles?.find((candidate) => candidate.id === artistId);
+    setArtistSelection({
+      artistId,
+      relationship,
+      artistName: relationship === "writer"
+        ? writerName
+        : profile?.displayName?.trim() || profile?.fullName,
+      profileImageUrl: profile?.profileImageUrl,
+    });
+  };
   const metadataFields = [
-    ...(getLyricArtistNames(lyric).length ? [["Recited By", <ReciterDisclosure item={lyric} go={go} />] as const] : []),
-    ...(writerName !== "Unknown writer" ? [["Written By", <span className="lyrics-writer-attribution"><ArtistProfileAvatar imageUrl={writerProfile?.profileImageUrl} />{writerName}</span>] as const] : []),
+    ...(lyric.reciterIds.length || lyric.reciters.length ? [["Recited By", <ReciterArtistLinks item={lyric} onArtistSelect={openArtistDrawer} />] as const] : []),
+    ...(writerName !== "Unknown writer" ? [["Written By", <WriterArtistLink item={lyric} onArtistSelect={openArtistDrawer} />] as const] : []),
     ...(lyric.createdAt ? [["Added", formatLyricDate(lyric.createdAt)] as const] : []),
     ...(bookName ? [["Book", bookName] as const] : []),
     ...(subjectName ? [["Subject", subjectName] as const] : []),
@@ -374,7 +408,8 @@ function LyricDetail({ go }: { go: (r: Route) => void }) {
     }
   };
 
-  return <main className="reading-bg">
+  return <>
+  <main className="reading-bg">
     <div className="container narrow">
       <Breadcrumbs items={["Lyrics", lyric.title]} go={go} />
       <article className="lyric-reading lyric-detail-page">
@@ -411,7 +446,17 @@ function LyricDetail({ go }: { go: (r: Route) => void }) {
       </section> : null}
       {lyric.relatedVideos?.length ? <section className="related"><SectionHead title={interfaceAttributeText("Related Videos")} /><YouTubeVideoGrid videos={lyric.relatedVideos.map((video, index) => ({ id: `${lyric.id}-video-${index}`, title: video.title || "YouTube video reference", url: video.url }))} /></section> : null}
     </div>
-  </main>;
+  </main>
+  {artistSelection && <LyricsArtistProfileDrawer
+    key={`${artistSelection.artistId}-${artistSelection.relationship}`}
+    selection={artistSelection}
+    onClose={() => setArtistSelection(null)}
+    onSelectLyric={(selectedLyricId) => {
+      setArtistSelection(null);
+      go(`lyric-detail?id=${encodeURIComponent(selectedLyricId)}`);
+    }}
+  />}
+  </>;
 }
 
 export default function App() {
@@ -699,6 +744,7 @@ export default function App() {
     <PersistentAudioPlayer
       track={activeAudio}
       tracks={publicAudioTracks}
+      go={go}
       audioRef={audioElementRef}
       isPlaying={isAudioPlaying}
       onPlayAudio={handlePlayAudio}

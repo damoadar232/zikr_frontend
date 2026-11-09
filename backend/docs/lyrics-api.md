@@ -4,9 +4,9 @@ All responses use the existing `ApiResponse` envelope (`data`, `error`, `message
 
 ## Public
 
-`GET /api/v1/lyrics?page=0&size=20&category=naat-sharif&reciter=owais&poet=imam-ahmed-raza-khan&language=roman`
+`GET /api/v1/lyrics?page=0&size=20&category=naat-sharif&reciter=owais&reciterId=123&poet=456&language=roman`
 
-Filters are optional. Page is zero-based and size is 1–100. Only lyrics whose parent status is `PUBLISHED` are returned. Every valid saved language version for those lyrics is available regardless of its legacy language-level status. A successful list has this shape:
+Filters are optional. `reciter` retains its existing text/key matching behavior. `reciterId` filters only the global artist ID assigned with the `RECITER` role. `poet` retains its existing writer-name/key behavior and also accepts a numeric global artist ID to filter the writer relationship. The reciter and writer filters are independent and are never substituted for each other. Page is zero-based and size is 1–100. Only lyrics whose parent status is `PUBLISHED` are returned. Every valid saved language version for those lyrics is available regardless of its legacy language-level status. List responses retain the existing paginated `data.items`, `page`, `size`, `totalElements`, and `totalPages` shape and include `reciterIds` containing only global IDs with the `RECITER` assignment. A successful list has this shape:
 
 ```json
 {
@@ -15,6 +15,7 @@ Filters are optional. Page is zero-based and size is 1–100. Only lyrics whose 
       {
         "id": "mustafa-jaan-e-rehmat",
         "title": "Mustafa Jaan-e-Rehmat",
+        "reciterIds": [123],
         "languageVersions": [
           {
             "code": "roman",
@@ -34,6 +35,8 @@ Filters are optional. Page is zero-based and size is 1–100. Only lyrics whose 
   }
 }
 ```
+
+`GET /api/v1/artists/{id}` returns the public profile of an active global Artist by numeric ID. It uses the standard `ApiResponse` envelope and exposes the artist ID, key, full/display names, biography, roles, and profile image URL; inactive or unknown IDs return 404. Internal media-storage identifiers and upload metadata are not included. The endpoint does not require administrator authentication.
 
 `GET /api/v1/lyrics/{reference}` accepts the stable frontend `legacyId`, slug, or numeric database ID. Draft lyrics and lyrics without public status return 404.
 

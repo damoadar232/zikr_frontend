@@ -4692,6 +4692,263 @@ html[data-theme="dark"] .detail-meta-item {
     border-radius: 10px 0 0 10px
 }
 
+.lyrics-artist-drawer-backdrop {
+    position: fixed;
+    z-index: 1700;
+    inset: 0;
+    display: flex;
+    justify-content: flex-end;
+    background: rgba(16, 27, 23, .42)
+}
+
+.lyrics-artist-drawer {
+    display: flex;
+    width: min(620px, calc(100% - 24px));
+    max-width: 100%;
+    height: 100%;
+    flex-direction: column;
+    overflow-y: auto;
+    padding: 28px;
+    border-left: 1px solid var(--line);
+    background: var(--white);
+    color: var(--text);
+    box-shadow: 0 0 36px #10221c30
+}
+
+.lyrics-artist-drawer-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    padding-bottom: 22px;
+    border-bottom: 1px solid var(--line)
+}
+
+.lyrics-artist-profile {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 18px
+}
+
+.lyrics-artist-profile .lyrics-artist-avatar--profile {
+    margin: 0
+}
+
+.lyrics-artist-profile > div {
+    min-width: 0
+}
+
+.lyrics-artist-profile h2 {
+    margin: 4px 0;
+    color: var(--text);
+    font-family: var(--serif);
+    font-size: calc((clamp(22px, 3vw, 30px)) * var(--interface-scale, 1))
+}
+
+.lyrics-artist-profile p {
+    margin: 6px 0 0;
+    color: var(--muted);
+    line-height: 1.5
+}
+
+.lyrics-artist-drawer-close {
+    display: grid;
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+    place-items: center;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    background: var(--cream);
+    color: var(--text);
+    cursor: pointer
+}
+
+.lyrics-artist-drawer-content {
+    min-width: 0;
+    padding-top: 22px
+}
+
+.lyrics-artist-drawer-content h3 {
+    margin: 0;
+    color: var(--text);
+    font-family: var(--serif);
+    font-size: calc((21px) * var(--interface-scale, 1))
+}
+
+.lyrics-artist-results-count {
+    margin: 6px 0 16px;
+    color: var(--muted);
+    font-size: calc((12px) * var(--interface-scale, 1))
+}
+
+.lyrics-artist-list {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none
+}
+
+.lyrics-artist-list li {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: 28px 56px minmax(0, 1fr);
+    align-items: center;
+    gap: 12px;
+    padding: 10px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--white)
+}
+
+.lyrics-artist-list-number {
+    color: var(--muted);
+    font-family: var(--serif);
+    text-align: center
+}
+
+.lyrics-artist-list-thumbnail {
+    width: 56px;
+    height: 56px;
+    border-radius: 7px;
+    background: var(--cream);
+    object-fit: cover
+}
+
+.audio-artist-list-placeholder {
+    display: grid;
+    place-items: center;
+    color: var(--muted)
+}
+
+.ebook-author-list-placeholder {
+    display: grid;
+    place-items: center;
+    color: var(--muted)
+}
+
+.ebook-author-links {
+    display: inline
+}
+
+.lyrics-artist-list-copy {
+    display: grid;
+    min-width: 0;
+    gap: 5px
+}
+
+.lyrics-artist-list-title {
+    width: fit-content;
+    max-width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    font-weight: 700;
+    text-align: left;
+    cursor: pointer
+}
+
+.lyrics-artist-list-title:hover {
+    color: var(--gold)
+}
+
+.lyrics-artist-list-copy small {
+    overflow: hidden;
+    color: var(--muted);
+    font-size: calc((11px) * var(--interface-scale, 1));
+    text-overflow: ellipsis;
+    white-space: nowrap
+}
+
+.lyrics-artist-drawer-state {
+    display: grid;
+    min-height: 150px;
+    place-content: center;
+    justify-items: center;
+    gap: 12px;
+    color: var(--muted);
+    text-align: center
+}
+
+.lyrics-artist-drawer-state p {
+    margin: 0
+}
+
+.lyrics-artist-loading-indicator {
+    width: 26px;
+    height: 26px;
+    border: 2px solid var(--line);
+    border-top-color: var(--gold);
+    border-radius: 50%;
+    animation: lyrics-artist-loading .8s linear infinite
+}
+
+@keyframes lyrics-artist-loading {
+    to {
+        transform: rotate(360deg)
+    }
+}
+
+@media (max-width: 600px) {
+    .lyrics-artist-drawer {
+        width: 100%;
+        padding: 20px 16px
+    }
+
+    .lyrics-artist-profile {
+        align-items: flex-start;
+        gap: 12px
+    }
+
+    .lyrics-artist-profile .lyrics-artist-avatar--profile {
+        width: 76px;
+        height: 76px;
+        flex: 0 0 76px
+    }
+
+    .lyrics-artist-list li {
+        grid-template-columns: 22px 48px minmax(0, 1fr);
+        gap: 8px;
+        padding: 8px
+    }
+
+    .lyrics-artist-list-thumbnail {
+        width: 48px;
+        height: 48px
+    }
+}
+
+.lyrics-artist-name-wrap {
+    display: inline-flex;
+    align-items: center;
+    vertical-align: middle
+}
+
+.lyrics-artist-links,
+.lyrics-artist-link-item {
+    display: inline
+}
+
+.lyrics-artist-name-link {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    text-decoration: underline;
+    text-decoration-color: var(--gold);
+    text-underline-offset: 3px;
+    cursor: pointer
+}
+
+.lyrics-artist-name-link:hover {
+    color: var(--gold)
+}
+
 .drawer-heading {
     display: flex;
     align-items: flex-start;
@@ -5911,6 +6168,43 @@ html[data-theme="dark"] .detail-meta-item {
     min-height: 0
 }
 
+.home-lyrics-list {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px
+}
+
+.home-lyrics-list .editorial-lyric--home {
+    min-height: 220px
+}
+
+.home-lyrics-list .editorial-lyric--home .lyric-content {
+    min-height: 220px;
+    padding: 26px
+}
+
+.home-lyrics-list .editorial-lyric--home .lyric-bottom {
+    max-width: none
+}
+
+.home-lyric-attribution-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px
+}
+
+.home-lyric-attribution-row small {
+    display: inline-flex;
+    align-items: center;
+    min-width: 0
+}
+
+.home-lyric-attribution-row .editorial-action {
+    flex: 0 0 auto;
+    margin: 0 0 0 auto
+}
+
 @media(max-width:760px) {
     .lyrics-grid {
         grid-template-columns: 1fr
@@ -5924,6 +6218,19 @@ html[data-theme="dark"] .detail-meta-item {
 
     .lyric-content {
         min-height: 0
+    }
+
+    .home-lyrics-list .editorial-lyric--home {
+        min-height: 200px
+    }
+
+    .home-lyrics-list .editorial-lyric--home .lyric-content {
+        min-height: 200px;
+        padding: 20px
+    }
+
+    .home-lyric-attribution-row {
+        gap: 10px
     }
 }
 

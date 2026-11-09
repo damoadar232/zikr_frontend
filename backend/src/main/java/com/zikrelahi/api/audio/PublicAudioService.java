@@ -24,9 +24,10 @@ public class PublicAudioService {
             String query,
             String languageCode,
             String categoryKey,
+            Long artistId,
             Pageable pageable) {
         Page<Long> idsPage = audioRepository.findPublishedAudioIds(
-                normalize(query), normalize(languageCode), normalize(categoryKey), pageable);
+                normalize(query), normalize(languageCode), normalize(categoryKey), artistId, pageable);
         List<Audio> audios = loadInPageOrder(idsPage.getContent());
         Map<Long, AudioDtos.AudioArtistCredits> credits =
                 artistAssignmentRepository.findCreditsForAudios(idsPage.getContent());

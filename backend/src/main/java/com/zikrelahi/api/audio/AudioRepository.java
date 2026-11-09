@@ -37,11 +37,17 @@ public interface AudioRepository extends JpaRepository<Audio, Long> {
               and (:categoryKey is null or exists (
                   select c.categoryKey from Audio a2 join a2.categories c
                   where a2.id = a.id and c.categoryKey = :categoryKey and c.active = true))
+              and (:artistId is null or exists (
+                  select assignment.id.audioId from AudioArtistAssignment assignment
+                  where assignment.id.audioId = a.id
+                    and assignment.id.artistId = :artistId
+                    and assignment.id.role = 'SINGER'))
             """)
     Page<Long> findPublishedAudioIds(
             @Param("query") String query,
             @Param("languageCode") String languageCode,
             @Param("categoryKey") String categoryKey,
+            @Param("artistId") Long artistId,
             Pageable pageable);
 
     @EntityGraph(attributePaths = { "language", "categories" })

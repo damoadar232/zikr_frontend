@@ -35,6 +35,7 @@ public class PublicAudioController {
             @RequestParam(required = false) String query,
             @RequestParam(required = false) String categoryKey,
             @RequestParam(required = false) String languageCode,
+            @RequestParam(required = false) @Min(1) Long artistId,
             @RequestParam(defaultValue = "publishedDate") String sort,
             @RequestParam(defaultValue = "DESC") String direction) {
         String sortField = sort == null || sort.isBlank() ? "publishedDate" : sort.trim();
@@ -53,6 +54,7 @@ public class PublicAudioController {
                 query,
                 languageCode,
                 categoryKey,
+                artistId,
                 PageRequest.of(page, size, Sort.by(sortDirection, sortField)))));
     }
 

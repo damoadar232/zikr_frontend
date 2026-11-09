@@ -14,6 +14,7 @@ final class LyricRelations {
     final Set<String> categoryIds = new LinkedHashSet<>();
     final Set<String> subjectIds = new LinkedHashSet<>();
     final Set<Long> artistIds = new LinkedHashSet<>();
+    final Set<Long> reciterIds = new LinkedHashSet<>();
     final Map<Long, ArtistProfileDto> artistProfiles = new LinkedHashMap<>();
     final List<String> reciters = new ArrayList<>();
     final Set<String> tags = new LinkedHashSet<>();
@@ -29,6 +30,10 @@ final class LyricRelations {
 
     List<Long> artistIds() {
         return List.copyOf(artistIds);
+    }
+
+    List<Long> reciterIds() {
+        return List.copyOf(reciterIds);
     }
 
     List<ArtistProfileDto> artistProfiles() {

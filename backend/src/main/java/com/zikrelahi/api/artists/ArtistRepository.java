@@ -12,6 +12,8 @@ public interface ArtistRepository extends JpaRepository<Artist, Long> {
 
     java.util.Optional<Artist> findByArtistKey(String artistKey);
 
+    java.util.Optional<Artist> findByIdAndStatus(Long id, ArtistStatus status);
+
     boolean existsByArtistKey(String artistKey);
 
     @Query("""

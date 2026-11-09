@@ -1,9 +1,10 @@
 import { LocalizedText, useInterfaceText } from "../../../app/providers/interfaceLanguage";
 import { useReveal } from "../../../components/common/Reveal";
 import { Btn } from "../../../components/ui";
-import type { EbookLibraryItem } from "../services/ebooksApiService";
+import type { EbookAuthor, EbookLibraryItem } from "../services/ebooksApiService";
+import { EbookAuthorLinks } from "./EbookAuthorLinks";
 
-export function BookCard({ item, index, onClick, onDownload }: { item: EbookLibraryItem; index: number; onClick: () => void; onDownload?: (book: EbookLibraryItem) => void }) {
+export function BookCard({ item, index, onClick, onDownload, onAuthorSelect, showPublishedDate = true }: { item: EbookLibraryItem; index: number; onClick: () => void; onDownload?: (book: EbookLibraryItem) => void; onAuthorSelect?: (author: EbookAuthor) => void; showPublishedDate?: boolean }) {
     const t = useInterfaceText();
     const ref = useReveal<HTMLElement>((index % 4) * 85);
     const canDownload = item.downloadable && Boolean(onDownload);
@@ -13,7 +14,8 @@ export function BookCard({ item, index, onClick, onDownload }: { item: EbookLibr
 
             }
             {/* <span className="cover-ornament">۞</span> */}
-            <small><LocalizedText text={"ZIKR-E-ILAHI LIBRARY"} /></small><b>{item.title}</b></button>
+            {/* <small><LocalizedText text={"ZIKR-E-ILAHI LIBRARY"} /></small> */}
+        </button>
 
-        <span className="badge">{t(item.category)}</span><h3>{item.title}</h3><p>{item.author} <span aria-hidden="true">•</span> {item.date}</p><div className="book-actions"><Btn variant="outline" icon="book" onClick={onClick}><LocalizedText text={"Read Online"} /></Btn><Btn variant="outline" icon="download" disabled={!canDownload} onClick={() => canDownload && onDownload?.(item)}>{canDownload ? "Download PDF" : "Download unavailable"}</Btn></div></article>;
+        <span className="badge">{t(item.category)}</span><h3>{item.title}</h3><p><EbookAuthorLinks authors={item.authors} fallbackName={item.author} onAuthorSelect={onAuthorSelect} />{showPublishedDate && <> <span aria-hidden="true">•</span> {item.date}</>}</p><div className="book-actions"><Btn variant="outline" icon="book" onClick={onClick}><LocalizedText text={"Read Online"} /></Btn><Btn variant="outline" icon="download" disabled={!canDownload} onClick={() => canDownload && onDownload?.(item)}>{canDownload ? "Download PDF" : "Download unavailable"}</Btn></div></article>;
 }

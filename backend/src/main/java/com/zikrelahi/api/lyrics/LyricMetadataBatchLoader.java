@@ -45,6 +45,17 @@ class LyricMetadataBatchLoader {
                                                                 ignored -> new LyricRelations()).artistIds
                                                 .add(result.getLong("artist_id")));
                 jdbc.query("""
+                                SELECT lyric_id, artist_id
+                                FROM lyric_artist_ids
+                                WHERE lyric_id IN (:lyricIds) AND role = 'RECITER'
+                                ORDER BY lyric_id, position, artist_id
+                                """,
+                                parameters,
+                                (RowCallbackHandler) result -> relations
+                                                .computeIfAbsent(result.getLong("lyric_id"),
+                                                                ignored -> new LyricRelations()).reciterIds
+                                                .add(result.getLong("artist_id")));
+                jdbc.query("""
                                 SELECT id AS lyric_id, artist_id
                                 FROM lyrics
                                 WHERE id IN (:lyricIds) AND artist_id IS NOT NULL

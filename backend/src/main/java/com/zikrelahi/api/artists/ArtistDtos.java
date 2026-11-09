@@ -65,6 +65,15 @@ public final class ArtistDtos {
             String displayName,
             String profileImageUrl) {}
 
+    public record PublicArtistProfileDto(
+            Long id,
+            String artistKey,
+            String fullName,
+            String displayName,
+            String biography,
+            List<String> roles,
+            String profileImageUrl) {}
+
     public record RoleDto(String code, String label) {}
 
     public record PageSlice<T>(List<T> items, int page, int size, long totalElements, int totalPages) {}

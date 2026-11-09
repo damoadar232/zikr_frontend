@@ -80,6 +80,7 @@ export interface ApiPublicLyric {
     artistId: number | null;
     artistIds: number[];
     reciters: string[];
+    reciterIds: number[];
     writerId: number | null;
     writer: string | null;
     artistProfiles?: ApiArtistProfile[];
@@ -140,9 +141,11 @@ export type CombinedLyricsUpdateRequest = CombinedLyricsCreateRequest;
 export interface LyricsApiService {
     listAdminLyrics(options?: { page?: number; size?: number; status?: ApiContentStatus; query?: string }): Promise<ApiPage<ApiAdminLyric>>;
     listAdminSubjects(): Promise<ApiLyricSubject[]>;
-    listPublicLyrics(options?: { page?: number; size?: number; category?: string; reciter?: string; poet?: string; language?: ApiLyricLanguage }): Promise<ApiPage<ApiPublicLyric>>;
+    listPublicLyrics(options?: { page?: number; size?: number; category?: string; reciter?: string; reciterId?: number; poet?: string | number; language?: ApiLyricLanguage }): Promise<ApiPage<ApiPublicLyric>>;
+    listPublicLyricsByReciter(artistId: number, options?: { page?: number; size?: number }): Promise<ApiPage<ApiPublicLyric>>;
+    listPublicLyricsByWriter(artistId: number, options?: { page?: number; size?: number }): Promise<ApiPage<ApiPublicLyric>>;
     listPublicSubjects(): Promise<ApiPublicSubject[]>;
-    listAllPublicLyrics(options?: { size?: number; category?: string; reciter?: string; poet?: string; language?: ApiLyricLanguage }): Promise<ApiPublicLyric[]>;
+    listAllPublicLyrics(options?: { size?: number; category?: string; reciter?: string; reciterId?: number; poet?: string | number; language?: ApiLyricLanguage }): Promise<ApiPublicLyric[]>;
     getPublicLyric(reference: string): Promise<ApiPublicLyric>;
     loadLyricForEditing(reference: string): Promise<ApiAdminLyric>;
     createLyric(request: CombinedLyricsCreateRequest): Promise<ApiAdminLyric>;
