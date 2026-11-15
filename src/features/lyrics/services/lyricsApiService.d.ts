@@ -102,6 +102,10 @@ export interface ApiPage<T> {
     size: number;
     totalElements: number;
     totalPages: number;
+    first?: boolean;
+    last?: boolean;
+    hasNext?: boolean;
+    hasPrevious?: boolean;
 }
 
 export interface LyricsMetadataRequest {
@@ -141,7 +145,8 @@ export type CombinedLyricsUpdateRequest = CombinedLyricsCreateRequest;
 export interface LyricsApiService {
     listAdminLyrics(options?: { page?: number; size?: number; status?: ApiContentStatus; query?: string }): Promise<ApiPage<ApiAdminLyric>>;
     listAdminSubjects(): Promise<ApiLyricSubject[]>;
-    listPublicLyrics(options?: { page?: number; size?: number; category?: string; reciter?: string; reciterId?: number; poet?: string | number; language?: ApiLyricLanguage }): Promise<ApiPage<ApiPublicLyric>>;
+    listPublicLyrics(options?: { page?: number; size?: number; mainListing?: boolean; category?: string; reciter?: string; reciterId?: number; poet?: string | number; language?: ApiLyricLanguage; query?: string; letter?: string }): Promise<ApiPage<ApiPublicLyric>>;
+    getPublicLyricsPage(options?: { page?: number; size?: number; category?: string; reciter?: string; reciterId?: number; poet?: string | number; language?: ApiLyricLanguage; query?: string; letter?: string }): Promise<ApiPage<ApiPublicLyric>>;
     listPublicLyricsByReciter(artistId: number, options?: { page?: number; size?: number }): Promise<ApiPage<ApiPublicLyric>>;
     listPublicLyricsByWriter(artistId: number, options?: { page?: number; size?: number }): Promise<ApiPage<ApiPublicLyric>>;
     listPublicSubjects(): Promise<ApiPublicSubject[]>;

@@ -4836,11 +4836,14 @@ html[data-theme="dark"] .detail-meta-item {
 .lyrics-artist-list-copy {
     display: grid;
     min-width: 0;
+    overflow: hidden;
     gap: 5px
 }
 
 .lyrics-artist-list-title {
-    width: fit-content;
+    display: block;
+    width: 100%;
+    min-width: 0;
     max-width: 100%;
     padding: 0;
     border: 0;
@@ -4848,6 +4851,7 @@ html[data-theme="dark"] .detail-meta-item {
     color: var(--text);
     font: inherit;
     font-weight: 700;
+    overflow-wrap: anywhere;
     text-align: left;
     cursor: pointer
 }
@@ -4857,6 +4861,7 @@ html[data-theme="dark"] .detail-meta-item {
 }
 
 .lyrics-artist-list-copy small {
+    display: block;
     overflow: hidden;
     color: var(--muted);
     font-size: calc((11px) * var(--interface-scale, 1));
@@ -6336,6 +6341,92 @@ html[data-theme="dark"] .detail-meta-item {
 
     .home-lyric-attribution-row {
         gap: 10px
+    }
+}
+
+.lyrics-list--main {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px
+}
+
+.lyrics-list--main .editorial-lyric--listing {
+    width: 100%;
+    min-height: 220px;
+    aspect-ratio: auto
+}
+
+.lyrics-list--main .editorial-lyric--listing .lyric-content {
+    height: auto;
+    min-height: 220px;
+    padding: 26px
+}
+
+.lyrics-list--main .editorial-lyric--listing .lyric-bottom {
+    max-width: none
+}
+
+.lyrics-list--main .editorial-lyric--listing h3 {
+    overflow-wrap: anywhere
+}
+
+@media(max-width:760px) {
+    .lyrics-list--main .editorial-lyric--listing {
+        min-height: 200px
+    }
+
+    .lyrics-list--main .editorial-lyric--listing .lyric-content {
+        min-height: 200px;
+        padding: 20px
+    }
+
+    .lyrics-list--main .home-lyric-attribution-row {
+        align-items: flex-start;
+        flex-wrap: wrap
+    }
+}
+
+.lyrics-pagination {
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin: 32px auto 0
+}
+
+.lyrics-pagination button {
+    width: auto;
+    min-width: 40px;
+    padding: 0 12px;
+    border-color: var(--line);
+    color: var(--text)
+}
+
+.lyrics-pagination button.active {
+    border-color: var(--gold);
+    background: var(--ink);
+    color: var(--gold2)
+}
+
+.lyrics-pagination button:disabled {
+    cursor: not-allowed;
+    opacity: .45
+}
+
+.lyrics-pagination-summary {
+    flex-basis: 100%;
+    color: var(--muted);
+    font-size: .875em;
+    text-align: center
+}
+
+@media(max-width:480px) {
+    .lyrics-pagination {
+        gap: 5px;
+        margin-top: 24px
+    }
+
+    .lyrics-pagination button {
+        min-width: 36px;
+        padding: 0 8px
     }
 }
 

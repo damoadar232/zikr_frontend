@@ -18,6 +18,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
@@ -67,6 +68,14 @@ public class GlobalExceptionHandler {
                 return ResponseEntity.badRequest()
                                 .body(ApiResponse.error("INVALID_REQUEST",
                                                 "The request body or parameters are invalid."));
+        }
+
+        @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+        public ResponseEntity<ApiResponse<Void>> handleInvalidParameter(
+                        MethodArgumentTypeMismatchException ex) {
+                return ResponseEntity.badRequest()
+                                .body(ApiResponse.error("INVALID_PARAMETER",
+                                                "Request parameter '" + ex.getName() + "' has an invalid value."));
         }
 
         @ExceptionHandler(ConstraintViolationException.class)

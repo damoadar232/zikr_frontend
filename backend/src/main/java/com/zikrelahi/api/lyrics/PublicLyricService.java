@@ -2,7 +2,7 @@ package com.zikrelahi.api.lyrics;
 
 import com.zikrelahi.api.common.ContentStatus;
 import com.zikrelahi.api.common.ResourceNotFoundException;
-import com.zikrelahi.api.lyrics.LyricDtos.PageSlice;
+import com.zikrelahi.api.lyrics.LyricDtos.PublicPageSlice;
 import com.zikrelahi.api.lyrics.LyricDtos.PublicSubjectDto;
 import com.zikrelahi.api.lyrics.LyricDtos.PublicLyricDto;
 import org.springframework.data.domain.Page;
@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
+import java.util.Locale;
 
 @Service
 public class PublicLyricService {
@@ -30,17 +31,19 @@ public class PublicLyricService {
     }
 
     @Transactional(readOnly = true)
-    public PageSlice<PublicLyricDto> list(int page, int size, String category,
-            String reciter, Long reciterId, String poet, String language) {
+    public PublicPageSlice<PublicLyricDto> list(int page, int size, boolean mainListing, String category,
+            String reciter, Long reciterId, String poet, String language, String query, String letter) {
         requirePageBounds(page, size);
         String languageCode = StringUtils.hasText(language)
                 ? LyricLanguageCode.fromApiCode(language).name()
                 : null;
+        int effectiveSize = mainListing ? Math.min(size, 6) : size;
         Page<Lyric> results = lyricRepository.findPublicPage(
                 clean(category), clean(reciter), reciterId, clean(poet), numericId(poet),
-                languageCode, PageRequest.of(page, size));
-        return new PageSlice<>(assembler.toPublic(results.getContent()), results.getNumber(),
-                results.getSize(), results.getTotalElements(), results.getTotalPages());
+                languageCode, titleQuery(query), alphabetLetter(letter), PageRequest.of(page, effectiveSize));
+        return new PublicPageSlice<>(assembler.toPublic(results.getContent()), results.getNumber(),
+                results.getSize(), results.getTotalElements(), results.getTotalPages(),
+                results.isFirst(), results.isLast(), results.hasNext(), results.hasPrevious());
     }
 
     @Transactional(readOnly = true)
@@ -82,6 +85,29 @@ public class PublicLyricService {
 
     private static String clean(String value) {
         return StringUtils.hasText(value) ? value.trim() : null;
+    }
+
+    private static String titleQuery(String value) {
+        String query = clean(value);
+        if (query == null) {
+            return null;
+        }
+        return query.toLowerCase(Locale.ROOT)
+                .replace("!", "!!")
+                .replace("%", "!%")
+                .replace("_", "!_");
+    }
+
+    private static String alphabetLetter(String value) {
+        String letter = clean(value);
+        if (letter == null || "ALL".equalsIgnoreCase(letter)) {
+            return null;
+        }
+        letter = letter.toUpperCase(Locale.ROOT);
+        if ("0-9".equals(letter) || letter.matches("[A-Z]")) {
+            return letter;
+        }
+        throw new IllegalArgumentException("letter must be A-Z, 0-9, or omitted.");
     }
 
     private static Long numericId(String value) {

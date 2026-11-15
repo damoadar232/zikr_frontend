@@ -196,4 +196,16 @@ public final class LyricDtos {
 
     public record PageSlice<T>(List<T> items, int page, int size, long totalElements, int totalPages) {
     }
+
+    public record PublicPageSlice<T>(
+            List<T> items,
+            int page,
+            int size,
+            long totalElements,
+            int totalPages,
+            boolean first,
+            boolean last,
+            boolean hasNext,
+            boolean hasPrevious) {
+    }
 }

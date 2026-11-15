@@ -67,6 +67,12 @@ public interface LyricRepository extends JpaRepository<Lyric, Long> {
               AND (:languageCode IS NULL OR EXISTS (
                   SELECT 1 FROM lyric_language_versions v
                   WHERE v.lyric_id = l.id AND v.language_code = :languageCode))
+              AND (:titleQuery IS NULL OR LOWER(l.title) LIKE CONCAT('%', :titleQuery, '%') ESCAPE '!')
+              AND (:letter IS NULL OR (
+                  (:letter = '0-9'
+                      AND REGEXP_SUBSTR(l.title, '[A-Za-z0-9]') REGEXP '^[0-9]$')
+                  OR (:letter <> '0-9'
+                      AND UPPER(REGEXP_SUBSTR(l.title, '[A-Za-z0-9]')) = :letter)))
             ORDER BY l.created_at DESC, l.id DESC
             """, countQuery = """
             SELECT COUNT(*) FROM lyrics l
@@ -101,6 +107,12 @@ public interface LyricRepository extends JpaRepository<Lyric, Long> {
               AND (:languageCode IS NULL OR EXISTS (
                   SELECT 1 FROM lyric_language_versions v
                   WHERE v.lyric_id = l.id AND v.language_code = :languageCode))
+              AND (:titleQuery IS NULL OR LOWER(l.title) LIKE CONCAT('%', :titleQuery, '%') ESCAPE '!')
+              AND (:letter IS NULL OR (
+                  (:letter = '0-9'
+                      AND REGEXP_SUBSTR(l.title, '[A-Za-z0-9]') REGEXP '^[0-9]$')
+                  OR (:letter <> '0-9'
+                      AND UPPER(REGEXP_SUBSTR(l.title, '[A-Za-z0-9]')) = :letter)))
             """, nativeQuery = true)
     Page<Lyric> findPublicPage(@Param("categoryId") String categoryId,
             @Param("reciter") String reciter,
@@ -108,5 +120,7 @@ public interface LyricRepository extends JpaRepository<Lyric, Long> {
             @Param("poet") String poet,
             @Param("poetArtistId") Long poetArtistId,
             @Param("languageCode") String languageCode,
+            @Param("titleQuery") String titleQuery,
+            @Param("letter") String letter,
             Pageable pageable);
 }

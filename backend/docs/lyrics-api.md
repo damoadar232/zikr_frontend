@@ -4,9 +4,9 @@ All responses use the existing `ApiResponse` envelope (`data`, `error`, `message
 
 ## Public
 
-`GET /api/v1/lyrics?page=0&size=20&category=naat-sharif&reciter=owais&reciterId=123&poet=456&language=roman`
+`GET /api/v1/lyrics?page=0&size=6&mainListing=true&category=naat-sharif&reciter=owais&reciterId=123&poet=456&language=roman`
 
-Filters are optional. `reciter` retains its existing text/key matching behavior. `reciterId` filters only the global artist ID assigned with the `RECITER` role. `poet` retains its existing writer-name/key behavior and also accepts a numeric global artist ID to filter the writer relationship. The reciter and writer filters are independent and are never substituted for each other. Page is zero-based and size is 1–100. Only lyrics whose parent status is `PUBLISHED` are returned. Every valid saved language version for those lyrics is available regardless of its legacy language-level status. List responses retain the existing paginated `data.items`, `page`, `size`, `totalElements`, and `totalPages` shape and include `reciterIds` containing only global IDs with the `RECITER` assignment. A successful list has this shape:
+Filters are optional. Page is zero-based and defaults to `0`; size defaults to `20` and accepts values from `1` through `100`. The main Lyrics directory should request `mainListing=true`; in that mode the effective size is capped at `6`. It may also pass `query` to search titles and `letter` as `A`–`Z` or `0-9` to filter by the first ASCII letter or digit in the title. Other consumers retain their requested size, including Artist Profile requests for `10`. `reciter` retains its existing text/key matching behavior. `reciterId` filters only the global artist ID assigned with the `RECITER` role. `poet` retains its existing writer-name/key behavior and also accepts a numeric global artist ID to filter the writer relationship. The reciter and writer filters are independent and are never substituted for each other. Only lyrics whose parent status is `PUBLISHED` are returned, and the total count uses the same published-only and filter conditions. Every valid saved language version for those lyrics is available regardless of its legacy language-level status. List responses retain `data.items`, `page`, `size`, `totalElements`, and `totalPages`, add `first`, `last`, `hasNext`, and `hasPrevious`, and include `reciterIds` containing only global IDs with the `RECITER` assignment. A successful list has this shape:
 
 ```json
 {
@@ -29,9 +29,13 @@ Filters are optional. `reciter` retains its existing text/key matching behavior.
       }
     ],
     "page": 0,
-    "size": 20,
+    "size": 6,
     "totalElements": 1,
-    "totalPages": 1
+    "totalPages": 1,
+    "first": true,
+    "last": true,
+    "hasNext": false,
+    "hasPrevious": false
   }
 }
 ```

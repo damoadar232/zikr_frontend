@@ -8,7 +8,7 @@ import { Icon } from "../../../components/ui";
 import { LyricsCard } from "../components/LyricsCard";
 import { ArtistProfileAvatar } from "../components/ArtistProfileAvatar";
 import { lyricsApi } from "../services/lyricsApiService.js";
-import type { ApiArtistProfile, ApiPublicLyric, ApiPublicSubject } from "../services/lyricsApiService.js";
+import type { ApiArtistProfile, ApiLyricLanguage, ApiPage, ApiPublicLyric, ApiPublicSubject } from "../services/lyricsApiService.js";
 import { booksApi } from "../../books/services/booksApiService.js";
 import type { ApiBook } from "../../books/services/booksApiService.js";
 import { buildAvailableBrowseEntries } from "../utils/lyricsBrowseUtils.js";
@@ -26,14 +26,30 @@ const lyricsBrowseItems = [
     ["Subject / Occasion", "lyrics-subjects"],
 ] as const;
 
+const mainListingLanguages: Array<[string, string]> = [
+    ["ur", "Urdu"],
+    ["hi", "Hindi"],
+    ["roman", "Roman English"],
+];
+
 type LyricsBrowseEntry = { id: string; name: string; lyrics: any[]; profileImageUrl?: string | null };
 type LyricsBrowseConfig = { title: string; heading: string; parameter: string; noun: string; entries: LyricsBrowseEntry[] };
+
+function getVisiblePageNumbers(currentPage: number, totalPages: number) {
+    const visibleCount = Math.min(5, totalPages);
+    const firstPage = Math.max(0, Math.min(currentPage - 2, totalPages - visibleCount));
+    return Array.from({ length: visibleCount }, (_, index) => firstPage + index);
+}
 
 function matchesLyricsLetter(value: string, letter: string) {
     if (letter === "All") return true;
     const firstMeaningful = (value || "").match(/[A-Za-z0-9]/)?.[0] || "";
     if (!firstMeaningful) return false;
     return letter === "0-9" ? /\d/.test(firstMeaningful) : firstMeaningful.toUpperCase() === letter;
+}
+
+function isApiLyricLanguage(value: string): value is ApiLyricLanguage {
+    return value === "ur" || value === "hi" || value === "roman";
 }
 
 function LyricsBrowseControl({ go, active }: { go: (route: string) => void; active: string }) {
@@ -43,8 +59,8 @@ function LyricsBrowseControl({ go, active }: { go: (route: string) => void; acti
     </nav>;
 }
 
-function renderLyricCards(items: any[], go: (route: string) => void, displayLanguage?: string) {
-    return <div className="lyrics-list">{items.map((item, index) => <LyricsCard item={item} index={index} key={item.id} go={go} displayLanguage={displayLanguage} onClick={() => go(`lyric-detail?id=${encodeURIComponent(item.id)}`)} />)}</div>;
+function renderLyricCards(items: any[], go: (route: string) => void, displayLanguage?: string, mainListing = false) {
+    return <div className={`lyrics-list${mainListing ? " lyrics-list--main" : ""}`}>{items.map((item, index) => <LyricsCard item={item} index={index} key={item.id} go={go} displayLanguage={displayLanguage} presentation={mainListing ? "listing" : "default"} onClick={() => go(`lyric-detail?id=${encodeURIComponent(item.id)}`)} />)}</div>;
 }
 
 export function LyricsPage({ go, route }: { go: (route: string) => void; route: string }) {
@@ -52,16 +68,40 @@ export function LyricsPage({ go, route }: { go: (route: string) => void; route: 
     const [published, setPublished] = useState<ApiPublicLyric[]>([]);
     const [books, setBooks] = useState<ApiBook[]>([]);
     const [subjects, setSubjects] = useState<ApiPublicSubject[]>([]);
+    const [mainPageState, setMainPageState] = useState<{ requestKey: string; data: ApiPage<ApiPublicLyric> } | null>(null);
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState("");
     const [retry, setRetry] = useState(0);
     const [search, setSearch] = useState("");
     const [letter, setLetter] = useState("All");
+    const [pageSelection, setPageSelection] = useState<{ filterKey: string; page: number }>({ filterKey: "", page: 0 });
     const activeRoute = route.split("?")[0];
+    const isMainListing = activeRoute === "lyrics";
+    const query = search.trim().toLowerCase();
+    const dynamicLanguageOptions = Array.from(new Map<string, string>(published.flatMap(lyric => lyric.languageVersions || []).map(version => [normalizeLyricLanguageCode(version.code || version.label || version.script), version.label] as [string, string])).entries());
+    const languageOptions = isMainListing ? mainListingLanguages : dynamicLanguageOptions;
+    const defaultLanguage = isMainListing ? "all" : languageOptions.some(([code]) => code === "hi") ? "hi" : "all";
+    const requestedLanguage = activeRoute === "lyrics" ? getRouteQueryParam("language") || defaultLanguage : "";
+    const languageFilter = requestedLanguage === "all" ? "" : languageOptions.some(([code]) => code === normalizeLyricLanguageCode(requestedLanguage)) ? normalizeLyricLanguageCode(requestedLanguage) : defaultLanguage === "all" ? "" : defaultLanguage;
+    const mainListingLanguageFilter = isApiLyricLanguage(languageFilter) ? languageFilter : undefined;
+    const pageFilterKey = JSON.stringify([activeRoute, search.trim(), letter, languageFilter]);
+    const page = pageSelection.filterKey === pageFilterKey ? pageSelection.page : 0;
+    const mainQuery = search.trim();
+    const mainRequestKey = JSON.stringify([pageFilterKey, page, retry]);
+    const mainPage = mainPageState?.requestKey === mainRequestKey ? mainPageState.data : null;
+
     useEffect(() => {
+        setPageSelection(current => current.filterKey === pageFilterKey
+            ? current
+            : { filterKey: pageFilterKey, page: 0 });
+    }, [pageFilterKey]);
+
+    useEffect(() => {
+        if (isMainListing) return;
         let active = true;
         setLoading(true);
         setLoadError("");
+        setMainPageState(null);
         void Promise.all([
             lyricsApi.listAllPublicLyrics(),
             booksApi.listBooks(),
@@ -78,12 +118,28 @@ export function LyricsPage({ go, route }: { go: (route: string) => void; route: 
             if (active) setLoading(false);
         });
         return () => { active = false; };
-    }, [retry]);
-    const query = search.trim().toLowerCase();
-    const languageOptions = Array.from(new Map<string, string>(published.flatMap(lyric => lyric.languageVersions || []).map(version => [normalizeLyricLanguageCode(version.code || version.label || version.script), version.label] as [string, string])).entries());
-    const defaultLanguage = languageOptions.some(([code]) => code === "hi") ? "hi" : "all";
-    const requestedLanguage = activeRoute === "lyrics" ? getRouteQueryParam("language") || defaultLanguage : "";
-    const languageFilter = requestedLanguage === "all" ? "" : languageOptions.some(([code]) => code === normalizeLyricLanguageCode(requestedLanguage)) ? normalizeLyricLanguageCode(requestedLanguage) : defaultLanguage === "all" ? "" : defaultLanguage;
+    }, [retry, isMainListing]);
+
+    useEffect(() => {
+        if (!isMainListing) return;
+        let active = true;
+        setLoading(true);
+        setLoadError("");
+        void lyricsApi.getPublicLyricsPage({
+            page,
+            size: 6,
+            query: mainQuery || undefined,
+            letter: letter === "All" ? undefined : letter,
+            language: mainListingLanguageFilter,
+        }).then((result) => {
+            if (active) setMainPageState({ requestKey: mainRequestKey, data: result });
+        }).catch(() => {
+            if (active) setLoadError("Lyrics could not be loaded.");
+        }).finally(() => {
+            if (active) setLoading(false);
+        });
+        return () => { active = false; };
+    }, [isMainListing, page, mainQuery, letter, languageFilter, retry, mainRequestKey]);
     const buildEntries = (options: Array<{ id: string; name: string }>, getKeys: (lyric: ApiPublicLyric) => string[]) =>
         buildAvailableBrowseEntries(options, published, getKeys).map((entry) => {
             const name = entry.name.trim().toLowerCase();
@@ -134,19 +190,84 @@ export function LyricsPage({ go, route }: { go: (route: string) => void; route: 
         if (selected) go(activeRoute);
         else if (activeRoute === "lyrics" && (languageFilter || "all") !== defaultLanguage) go(`lyrics?language=${defaultLanguage}`);
     };
-    const resultLyrics = activeRoute === "lyrics" ? allLyrics : selectedLyrics;
+    const resultLyrics = isMainListing ? mainPage?.items || [] : selectedLyrics;
     const resultLanguageLabel = activeRoute === "lyrics" && languageFilter ? languageOptions.find(([code]) => code === languageFilter)?.[1] : undefined;
     const resultTitle = activeRoute === "lyrics" ? "Recently Published" : selected ? `${selected.name} lyrics` : "Matching Lyrics";
-    const resultEyebrow = `${resultLyrics.length} ${resultLyrics.length === 1 ? "work" : "works"}`;
+    const resultCount = isMainListing ? mainPage?.totalElements || 0 : resultLyrics.length;
+    const resultEyebrow = `${resultCount} ${resultCount === 1 ? "work" : "works"}`;
     const emptyMessage = activeRoute === "lyrics" ? "No lyrics match those filters." : `No lyrics match this ${config?.title.toLowerCase() || "category"} selection.`;
     const renderEmpty = (message: string, help: string) => <div className="empty"><Icon name="search" size={32} /><h3>{message}</h3><p><LocalizedText text={help} /></p><button className="btn btn-primary" onClick={clearFilters}><LocalizedText text={"Clear filters"} /></button></div>;
+    const visiblePages = mainPage ? getVisiblePageNumbers(page, mainPage.totalPages) : [];
+    const mainListingLoading = loading || (isMainListing && !mainPage && !loadError);
 
-    return <main><DirectoryHeader go={go} title={interfaceAttributeText("Devotional Lyrics")} text="Discover words of praise and devotion across languages, traditions, and beloved voices." /><div className="container directory-controls"><div className="lyrics-search-row"><SearchBox value={search} setValue={setSearch} placeholder={placeholder} />{activeRoute === "lyrics" && <label className="lyrics-language-filter"><span className="sr-only"><LocalizedText text={"Select lyric language"} /></span><select aria-label={interfaceAttributeText("Select lyric language")} value={languageFilter || "all"} onChange={event => go(event.target.value === "all" ? "lyrics?language=all" : `lyrics?language=${encodeURIComponent(event.target.value)}`)}><option value="all">{t("All languages")}</option>{languageOptions.map(([code, label]) => <option key={code} value={code}>{label}</option>)}</select></label>}</div><LyricsBrowseControl go={selectRoute} active={activeRoute} /><div className="alphabet" aria-label={interfaceAttributeText("Filter by first letter")}><button className={letter === "All" ? "active" : ""} onClick={() => setLetter("All")}><LocalizedText text={"All"} /></button>{["0-9", ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"].map(option => <button key={option} className={letter === option ? "active" : ""} onClick={() => setLetter(option)}>{option === "0-9" ? "0–9" : option}</button>)}</div></div>
-        {loading ? <section className="section container"><p role="status"><LocalizedText text={"Loading lyrics..."} /></p></section> : loadError ? <section className="section container"><div className="empty"><p role="alert"><LocalizedText text={loadError} /></p><button className="btn btn-primary" onClick={() => setRetry((count) => count + 1)}><LocalizedText text={"Try again"} /></button></div></section> : activeRoute === "lyrics" ? <section className="section container"><SectionHead eyebrow={resultEyebrow} title={resultTitle} />{resultLyrics.length ? renderLyricCards(resultLyrics, go, resultLanguageLabel) : renderEmpty(emptyMessage, "Try another title or letter, or reset the filters.")}</section> : <>
-            {overview && config && <section className="section container"><SectionHead eyebrow={`${directoryEntries.length} ${config.noun}`} title={config.heading} />{directoryEntries.length ? <div className="library-directory-grid">{directoryEntries.map(entry => <button key={entry.id} onClick={() => selectRoute(`${activeRoute}?${config.parameter}=${encodeURIComponent(entry.id)}`)}>{activeRoute === "lyrics-artists" || activeRoute === "lyrics-poets"
-                ? <span className="lyrics-artist-directory-entry"><ArtistProfileAvatar imageUrl={entry.profileImageUrl} size="directory" /><span><span>{entry.name}</span><small>{entry.lyrics.length} {entry.lyrics.length === 1 ? "title" : "titles"}</small></span></span>
-                : <><span>{entry.name}</span><small>{entry.lyrics.length} {entry.lyrics.length === 1 ? "title" : "titles"}</small></>}</button>)}</div> : renderEmpty(`No ${config.noun} match those filters.`, "Try another search or letter.")}</section>}
-            {selected && <section className="section container"><SectionHead eyebrow={resultEyebrow} title={resultTitle} action={`Back to ${config.heading}`} onAction={returnToOverview} />{resultLyrics.length ? renderLyricCards(resultLyrics, go) : renderEmpty(emptyMessage, "Try another title or letter, or return to the overview.")}</section>}
-            {!config && <section className="section container"><SectionHead eyebrow="Lyrics library" title={interfaceAttributeText("Recently Published")} />{allLyrics.length ? renderLyricCards(allLyrics, go) : renderEmpty(emptyMessage, "Try another title or letter, or reset the filters.")}</section>}
-        </>}</main>;
+    const paginationControls = isMainListing && mainPage && mainPage.totalPages > 1
+        ? <nav className="pagination lyrics-pagination" aria-label={interfaceAttributeText("Lyrics pages")}>
+            <button type="button" disabled={!(mainPage.hasPrevious ?? page > 0)} onClick={() => setPageSelection({ filterKey: pageFilterKey, page: Math.max(0, page - 1) })}><LocalizedText text={"Previous"} /></button>
+            {visiblePages.map(pageNumber => <button
+                type="button"
+                key={pageNumber}
+                className={pageNumber === page ? "active" : ""}
+                aria-current={pageNumber === page ? "page" : undefined}
+                aria-label={`Page ${pageNumber + 1}`}
+                onClick={() => setPageSelection({ filterKey: pageFilterKey, page: pageNumber })}
+            >{pageNumber + 1}</button>)}
+            <button type="button" disabled={!(mainPage.hasNext ?? page + 1 < mainPage.totalPages)} onClick={() => setPageSelection({ filterKey: pageFilterKey, page: Math.min(mainPage.totalPages - 1, page + 1) })}><LocalizedText text={"Next"} /></button>
+            <span className="lyrics-pagination-summary">Page {page + 1} of {mainPage.totalPages} · {mainPage.totalElements} lyrics</span>
+        </nav>
+        : null;
+
+    return <main>
+        <DirectoryHeader go={go} title={interfaceAttributeText("Devotional Lyrics")} text="Discover words of praise and devotion across languages, traditions, and beloved voices." />
+        <div className="container directory-controls">
+            <div className="lyrics-search-row">
+                <SearchBox value={search} setValue={setSearch} placeholder={placeholder} />
+                {isMainListing && <label className="lyrics-language-filter">
+                    <span className="sr-only"><LocalizedText text={"Select lyric language"} /></span>
+                    <select
+                        aria-label={interfaceAttributeText("Select lyric language")}
+                        value={languageFilter || "all"}
+                        onChange={event => go(event.target.value === "all" ? "lyrics?language=all" : `lyrics?language=${encodeURIComponent(event.target.value)}`)}
+                    >
+                        <option value="all">{t("All languages")}</option>
+                        {languageOptions.map(([code, label]) => <option key={code} value={code}>{label}</option>)}
+                    </select>
+                </label>}
+            </div>
+            <LyricsBrowseControl go={selectRoute} active={activeRoute} />
+            <div className="alphabet" aria-label={interfaceAttributeText("Filter by first letter")}>
+                <button className={letter === "All" ? "active" : ""} onClick={() => setLetter("All")}><LocalizedText text={"All"} /></button>
+                {["0-9", ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"].map(option => <button key={option} className={letter === option ? "active" : ""} onClick={() => setLetter(option)}>{option === "0-9" ? "0–9" : option}</button>)}
+            </div>
+        </div>
+        {mainListingLoading
+            ? <section className="section container"><p role="status"><LocalizedText text={"Loading lyrics..."} /></p></section>
+            : loadError
+                ? <section className="section container"><div className="empty"><p role="alert"><LocalizedText text={loadError} /></p><button className="btn btn-primary" onClick={() => setRetry(count => count + 1)}><LocalizedText text={"Try again"} /></button></div></section>
+                : isMainListing
+                    ? <section className="section container">
+                        <SectionHead eyebrow={resultEyebrow} title={resultTitle} />
+                        {resultLyrics.length
+                            ? renderLyricCards(resultLyrics, go, resultLanguageLabel, true)
+                            : renderEmpty(emptyMessage, "Try another title or letter, or reset the filters.")}
+                        {paginationControls}
+                    </section>
+                    : <>
+                        {overview && config && <section className="section container">
+                            <SectionHead eyebrow={`${directoryEntries.length} ${config.noun}`} title={config.heading} />
+                            {directoryEntries.length
+                                ? <div className="library-directory-grid">{directoryEntries.map(entry => <button key={entry.id} onClick={() => selectRoute(`${activeRoute}?${config.parameter}=${encodeURIComponent(entry.id)}`)}>{activeRoute === "lyrics-artists" || activeRoute === "lyrics-poets"
+                                    ? <span className="lyrics-artist-directory-entry"><ArtistProfileAvatar imageUrl={entry.profileImageUrl} size="directory" /><span><span>{entry.name}</span><small>{entry.lyrics.length} {entry.lyrics.length === 1 ? "title" : "titles"}</small></span></span>
+                                    : <><span>{entry.name}</span><small>{entry.lyrics.length} {entry.lyrics.length === 1 ? "title" : "titles"}</small></>}</button>)}</div>
+                                : renderEmpty(`No ${config.noun} match those filters.`, "Try another search or letter.")}
+                        </section>}
+                        {selected && <section className="section container">
+                            <SectionHead eyebrow={resultEyebrow} title={resultTitle} action={`Back to ${config.heading}`} onAction={returnToOverview} />
+                            {resultLyrics.length ? renderLyricCards(resultLyrics, go) : renderEmpty(emptyMessage, "Try another title or letter, or return to the overview.")}
+                        </section>}
+                        {!config && <section className="section container">
+                            <SectionHead eyebrow="Lyrics library" title={interfaceAttributeText("Recently Published")} />
+                            {allLyrics.length ? renderLyricCards(allLyrics, go) : renderEmpty(emptyMessage, "Try another title or letter, or reset the filters.")}
+                        </section>}
+                    </>}
+    </main>;
 }
