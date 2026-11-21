@@ -28,7 +28,8 @@ public class AdminArtistService {
     public ArtistDtos.AdminArtistDto create(ArtistDtos.CreateArtistRequest request) {
         String id = slugify(request.fullName());
         if (id.isEmpty()) {
-            throw new IllegalArgumentException("Full name must contain at least one letter or number to create a slug ID.");
+            throw new IllegalArgumentException(
+                    "Full name must contain at least one letter or number to create a slug ID.");
         }
         if (id.length() > 120) {
             throw new IllegalArgumentException("The generated artist ID must not exceed 120 characters.");
@@ -53,7 +54,8 @@ public class AdminArtistService {
     }
 
     @Transactional(readOnly = true)
-    public ArtistDtos.PageSlice<ArtistDtos.AdminArtistDto> list(int page, int size, String status, String role, String query) {
+    public ArtistDtos.PageSlice<ArtistDtos.AdminArtistDto> list(int page, int size, String status, String role,
+            String query) {
         if (page < 0 || size < 1 || size > 100) {
             throw new IllegalArgumentException("page must be >= 0 and size must be between 1 and 100.");
         }
@@ -65,7 +67,50 @@ public class AdminArtistService {
         return new ArtistDtos.PageSlice<>(
                 results.getContent().stream().map(this::toDto).toList(),
                 results.getNumber(), results.getSize(),
-                results.getTotalElements(), results.getTotalPages());
+                results.getTotalElements(), results.getTotalPages(),
+                results.isFirst(), results.isLast(), results.hasNext(), results.hasPrevious());
+    }
+
+    @Transactional(readOnly = true)
+    public ArtistDtos.PageSlice<ArtistDtos.ArtistProfileDto> listPublicReciters(int page, int size, String letter) {
+        if (page < 0) {
+            throw new IllegalArgumentException("page must be zero or greater.");
+        }
+        if (size < 1 || size > 18) {
+            throw new IllegalArgumentException("size must be between 1 and 18.");
+        }
+        String normalizedLetter = normalizeReciterLetter(letter);
+        Page<Artist> results = artistRepository.searchPublicReciters(
+                ArtistStatus.ACTIVE.name(),
+                List.of(ArtistRole.RECITER.name(), ArtistRole.NAAT_KHWAN.name()),
+                normalizedLetter,
+                PageRequest.of(page, size));
+        return new ArtistDtos.PageSlice<>(
+                results.getContent().stream().map(this::toProfileDto).toList(),
+                results.getNumber(), results.getSize(),
+                results.getTotalElements(), results.getTotalPages(),
+                results.isFirst(), results.isLast(), results.hasNext(), results.hasPrevious());
+    }
+
+    @Transactional(readOnly = true)
+    public ArtistDtos.PageSlice<ArtistDtos.ArtistProfileDto> listPublicPoets(int page, int size, String letter) {
+        if (page < 0) {
+            throw new IllegalArgumentException("page must be zero or greater.");
+        }
+        if (size < 1 || size > 18) {
+            throw new IllegalArgumentException("size must be between 1 and 18.");
+        }
+        String normalizedLetter = normalizeReciterLetter(letter);
+        Page<Artist> results = artistRepository.searchPublicPoets(
+                ArtistStatus.ACTIVE.name(),
+                ArtistRole.POET.name(),
+                normalizedLetter,
+                PageRequest.of(page, size));
+        return new ArtistDtos.PageSlice<>(
+                results.getContent().stream().map(this::toProfileDto).toList(),
+                results.getNumber(), results.getSize(),
+                results.getTotalElements(), results.getTotalPages(),
+                results.isFirst(), results.isLast(), results.hasNext(), results.hasPrevious());
     }
 
     @Transactional(readOnly = true)
@@ -189,6 +234,18 @@ public class AdminArtistService {
         }
     }
 
+    private static String normalizeReciterLetter(String letter) {
+        String cleaned = letter == null ? null : letter.trim();
+        if (cleaned == null || cleaned.isEmpty() || "ALL".equalsIgnoreCase(cleaned)) {
+            return null;
+        }
+        String normalized = cleaned.toUpperCase(Locale.ROOT);
+        if ("0-9".equals(normalized) || normalized.matches("[A-Z]")) {
+            return normalized;
+        }
+        throw new IllegalArgumentException("letter must be A-Z, 0-9, or omitted.");
+    }
+
     private Set<ArtistRole> parseRoles(List<String> roles) {
         if (roles == null || roles.isEmpty()) {
             throw new IllegalArgumentException("At least one role is required.");
@@ -209,7 +266,8 @@ public class AdminArtistService {
         } catch (IllegalArgumentException ex) {
             throw new IllegalArgumentException("Invalid role: '" + role + "'. Valid roles: "
                     + Arrays.stream(ArtistRole.values()).map(Enum::name)
-                            .collect(Collectors.joining(", ")) + ".");
+                            .collect(Collectors.joining(", "))
+                    + ".");
         }
     }
 
@@ -264,6 +322,15 @@ public class AdminArtistService {
                 artist.getProfileImageFormat(),
                 artist.getProfileImageSize(),
                 artist.getOriginalProfileImageFilename());
+    }
+
+    private ArtistDtos.ArtistProfileDto toProfileDto(Artist artist) {
+        return new ArtistDtos.ArtistProfileDto(
+                artist.getId(),
+                artist.getArtistKey(),
+                artist.getFullName(),
+                artist.getDisplayName(),
+                artist.getProfileImageUrl());
     }
 
     private ArtistDtos.ArtistOptionDto toOptionDto(Artist artist) {

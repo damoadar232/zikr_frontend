@@ -84,6 +84,22 @@ export function createArtistsApi({ baseUrl = API_BASE_URL, auth = adminAuth, fet
     const getArtistOptions = (options = {}) => request(`/api/v1/admin/artists/options${queryString(options)}`);
     const getRoles = () => request(`/api/v1/admin/artists/roles`);
     const getPublicArtistOptions = (options = {}) => request(`/api/v1/artists/options${queryString(options)}`, { authenticated: false });
+    const getPublicRecitersPage = ({ page = 0, size = 18, letter } = {}) => request(
+        `/api/v1/artists/reciters${queryString({
+            page,
+            size,
+            letter: letter && letter.toUpperCase() !== "ALL" ? letter : undefined,
+        })}`,
+        { authenticated: false },
+    );
+    const getPublicPoetsPage = ({ page = 0, size = 18, letter } = {}) => request(
+        `/api/v1/artists/poets${queryString({
+            page,
+            size,
+            letter: letter && letter.toUpperCase() !== "ALL" ? letter : undefined,
+        })}`,
+        { authenticated: false },
+    );
     const getPublicRoles = () => request(`/api/v1/artists/roles`, { authenticated: false });
     const getPublicArtistProfile = (id) => request(
         `/api/v1/artists/${encodeURIComponent(id)}`,
@@ -106,6 +122,8 @@ export function createArtistsApi({ baseUrl = API_BASE_URL, auth = adminAuth, fet
         setArtistStatus,
         getRoles,
         getPublicArtistOptions,
+        getPublicRecitersPage,
+        getPublicPoetsPage,
         getPublicRoles,
         getPublicArtistProfile,
     };

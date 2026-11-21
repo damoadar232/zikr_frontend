@@ -54,6 +54,25 @@ public class PublicLyricService {
     }
 
     @Transactional(readOnly = true)
+    public PublicPageSlice<PublicSubjectDto> listAvailableSubjectsPage(int page, int size, String letter, String query) {
+        if (page < 0) {
+            throw new IllegalArgumentException("page must be zero or greater.");
+        }
+        if (size < 1 || size > 18) {
+            throw new IllegalArgumentException("size must be between 1 and 18.");
+        }
+        Page<LyricSubject> results = subjectRepository.searchPublicPage(
+                ContentStatus.PUBLISHED.name(), alphabetLetter(letter), titleQuery(query), PageRequest.of(page, size));
+        return new PublicPageSlice<>(
+                results.getContent().stream()
+                        .map(subject -> new PublicSubjectDto(subject.getId(), subject.getName()))
+                        .toList(),
+                results.getNumber(), results.getSize(),
+                results.getTotalElements(), results.getTotalPages(),
+                results.isFirst(), results.isLast(), results.hasNext(), results.hasPrevious());
+    }
+
+    @Transactional(readOnly = true)
     public PublicLyricDto get(String reference) {
         Lyric lyric = findPublished(reference)
                 .orElseThrow(() -> new ResourceNotFoundException("Published lyric not found."));

@@ -150,6 +150,7 @@ export interface LyricsApiService {
     listPublicLyricsByReciter(artistId: number, options?: { page?: number; size?: number }): Promise<ApiPage<ApiPublicLyric>>;
     listPublicLyricsByWriter(artistId: number, options?: { page?: number; size?: number }): Promise<ApiPage<ApiPublicLyric>>;
     listPublicSubjects(): Promise<ApiPublicSubject[]>;
+    getPublicSubjectsPage(options?: { page?: number; size?: number; letter?: string; query?: string }): Promise<ApiPage<ApiPublicSubject>>;
     listAllPublicLyrics(options?: { size?: number; category?: string; reciter?: string; reciterId?: number; poet?: string | number; language?: ApiLyricLanguage }): Promise<ApiPublicLyric[]>;
     getPublicLyric(reference: string): Promise<ApiPublicLyric>;
     loadLyricForEditing(reference: string): Promise<ApiAdminLyric>;

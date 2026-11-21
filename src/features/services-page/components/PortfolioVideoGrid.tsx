@@ -8,7 +8,7 @@ function PortfolioVideoCard({ video }: { video: PortfolioVideo }) {
     const [playing, setPlaying] = useState(false);
     const [thumbnailFailed, setThumbnailFailed] = useState(false);
     const videoId = getYouTubeVideoId(video.url);
-    const title = video.title || "Devotional video";
+    const title = video.title || "Islamic video";
 
     return <article className="portfolio-video-card">
         {playing && videoId

@@ -48,7 +48,7 @@ const ebookSeedData = [
     {
         id: "gardens-of-devotion",
         title: "Gardens of Devotion",
-        description: "A refined collection of devotional reflections curated for quiet reading, remembrance, and spiritual uplift.",
+        description: "A refined collection of Islamic reflections curated for quiet reading, remembrance, and spiritual uplift.",
         authorIds: ["editorial-collection", "imam-ahmed-raza-khan"],
         categoryIds: ["naat-books", "islamic-books"],
         languageCode: "en",
@@ -96,7 +96,7 @@ const ebookSeedData = [
     {
         id: "wisdom-of-reflection",
         title: "Wisdom of Reflection",
-        description: "A reflective and devotional reading on the heart, patience, and the spiritual lesson found in everyday remembrance.",
+        description: "A reflective Islamic reading on the heart, patience, and the spiritual lessons found in everyday remembrance.",
         authorIds: ["imam-ahmed-raza-khan"],
         categoryIds: ["ala-hazrat-books", "islamic-books"],
         languageCode: "ur",
@@ -108,7 +108,7 @@ const ebookSeedData = [
     {
         id: "noor-e-sadaqat",
         title: "Noor-e-Sadaqat",
-        description: "A curated devotional anthology for reflection, gratitude, and remembrance.",
+        description: "A curated collection of Islamic writing for reflection, gratitude, and remembrance.",
         authorIds: ["ala-hazrat-publications"],
         categoryIds: ["ala-hazrat-books", "naat-books"],
         languageCode: "ur",
@@ -132,7 +132,7 @@ const ebookSeedData = [
     {
         id: "salam-o-durood",
         title: "Salam o Durood",
-        description: "Words of blessing and love collected in a gentle, meditative devotional volume.",
+        description: "Words of blessing and love collected in a gentle, meditative volume.",
         authorIds: ["pir-nasiruddin-nasir", "compiled-edition"],
         categoryIds: ["durood-o-salam", "dua-books"],
         languageCode: "ar",

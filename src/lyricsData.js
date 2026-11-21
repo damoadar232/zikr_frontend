@@ -23,20 +23,20 @@ export const lyricCategoryNumericIds = {
 };
 
 export const artists = [
-    { id: "owais-raza-qadri", name: "Owais Raza Qadri", profile: "Renowned reciter of devotional naats and supplications." },
+    { id: "owais-raza-qadri", name: "Owais Raza Qadri", profile: "Renowned reciter of Islamic naats and supplications." },
     { id: "zohaib-ashrafi", name: "Zohaib Ashrafi", profile: "Beloved reciter with expressive, heartfelt delivery." },
-    { id: "traditional", name: "Traditional", profile: "Community-recited and heritage devotional phrase." },
+    { id: "traditional", name: "Traditional", profile: "A phrase shared through community recitation and heritage." },
 ];
 
 export const poets = [
-    { id: "imam-ahmed-raza-khan", name: "Imam Ahmed Raza Khan", profile: "Celebrated writer of devotional poetry and praise." },
+    { id: "imam-ahmed-raza-khan", name: "Imam Ahmed Raza Khan", profile: "Celebrated writer of Islamic poetry and praise." },
     { id: "muzaffar-warsi", name: "Muzaffar Warsi", profile: "Poetic expression rooted in remembrance and compassion." },
     { id: "pir-nasiruddin-nasir", name: "Pir Nasiruddin Nasir", profile: "Writer of emotionally resonant naats and supplications." },
-    { id: "traditional-poet", name: "Traditional", profile: "Shared devotional phrase carried through generations." },
+    { id: "traditional-poet", name: "Traditional", profile: "A phrase shared across generations." },
 ];
 
 export const lyricBooks = [
-    { id: "noor-e-sadaqat", title: "Noor-e-Sadaqat", author: "Editorial Collection", description: "A curated devotional anthology for reflection and remembrance.", coverColor: "emerald" },
+    { id: "noor-e-sadaqat", title: "Noor-e-Sadaqat", author: "Editorial Collection", description: "A curated collection of Islamic poetry for reflection and remembrance.", coverColor: "emerald" },
     { id: "madina-roses", title: "Madina Roses", author: "Editorial Collection", description: "Short praise and remembrance pieces for the beloved city of Madina.", coverColor: "gold" },
     { id: "salam-o-durood", title: "Salam o Durood", author: "Compiled Edition", description: "Words of blessing and love written in gentle, meditative form.", coverColor: "navy" },
 ];
@@ -96,7 +96,7 @@ export const lyrics = [
             { code: "en", label: "English", script: "Roman", dir: "ltr", text: "The beloved’s message is a river of mercy.\nIn the heart of Madina, love finds its gentle home." },
             { code: "hi", label: "Hindi", script: "Devanagari", dir: "ltr", text: "प्यारे नबी की शान में दिल रोशन है।\nमदीना की राहों में इश्क़ का दरिया बहता है।" },
         ],
-        relatedAudio: [{ title: "Devotional recital", url: "https://example.com/audio/mustafa-jaan-e-rehmat" }],
+        relatedAudio: [{ title: "Naat recital", url: "https://example.com/audio/mustafa-jaan-e-rehmat" }],
         relatedVideos: [{ title: "Madina remembrance video", url: "https://www.youtube.com/watch?v=exampleMadina" }],
     },
     {

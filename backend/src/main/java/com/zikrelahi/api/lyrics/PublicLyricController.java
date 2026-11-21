@@ -49,6 +49,15 @@ public class PublicLyricController {
         return ResponseEntity.ok(ApiResponse.ok(lyricService.listAvailableSubjects()));
     }
 
+    @GetMapping("/subjects/page")
+    public ResponseEntity<ApiResponse<PublicPageSlice<PublicSubjectDto>>> listAvailableSubjectsPage(
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "18") @Min(1) @Max(18) int size,
+            @RequestParam(required = false) String letter,
+            @RequestParam(required = false) @Size(max = 250) String query) {
+        return ResponseEntity.ok(ApiResponse.ok(lyricService.listAvailableSubjectsPage(page, size, letter, query)));
+    }
+
     @GetMapping("/{reference}")
     public ResponseEntity<ApiResponse<PublicLyricDto>> get(@PathVariable String reference) {
         return ResponseEntity.ok(ApiResponse.ok(lyricService.get(reference)));

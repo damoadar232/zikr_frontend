@@ -67,6 +67,15 @@ export function createLyricsApi({ baseUrl = API_BASE_URL, auth = adminAuth, fetc
     const listPublicLyricsByWriter = (artistId, { page = 0, size = 10 } = {}) =>
         listPublicLyrics({ page, size, poet: artistId });
     const listPublicSubjects = () => request("/api/v1/lyrics/subjects", { authenticated: false });
+    const getPublicSubjectsPage = ({ page = 0, size = 18, letter, query } = {}) => request(
+        `/api/v1/lyrics/subjects/page${queryString({
+            page,
+            size,
+            query,
+            letter: letter && letter.toUpperCase() !== "ALL" ? letter : undefined,
+        })}`,
+        { authenticated: false },
+    );
     const listAllPublicLyrics = async ({ size = 100, ...filters } = {}) => {
         const firstPage = await listPublicLyrics({ ...filters, page: 0, size });
         const items = [...firstPage.items];
@@ -91,6 +100,7 @@ export function createLyricsApi({ baseUrl = API_BASE_URL, auth = adminAuth, fetc
         listPublicLyricsByReciter,
         listPublicLyricsByWriter,
         listPublicSubjects,
+        getPublicSubjectsPage,
         listAllPublicLyrics,
         getPublicLyric,
         loadLyricForEditing,

@@ -39,6 +39,18 @@ export interface ApiArtistPage {
     totalElements: number; totalPages: number;
 }
 
+export interface ApiPublicArtistPage<T = ApiPublicArtistProfile> {
+    items: T[];
+    page: number;
+    size: number;
+    totalElements: number;
+    totalPages: number;
+    first: boolean;
+    last: boolean;
+    hasNext: boolean;
+    hasPrevious: boolean;
+}
+
 export interface ArtistListParams {
     page?: number;
     size?: number;
@@ -71,6 +83,8 @@ export interface ArtistsApiService {
     setArtistStatus(id: string | number, status: ApiArtistStatus): Promise<ApiArtist>;
     getRoles(): Promise<ApiArtistRoleDto[]>;
     getPublicArtistOptions(options?: ArtistOptionsParams): Promise<ApiArtistOption[]>;
+    getPublicRecitersPage(options?: { page?: number; size?: number; letter?: string }): Promise<ApiPublicArtistPage<ApiPublicArtistProfile>>;
+    getPublicPoetsPage(options?: { page?: number; size?: number; letter?: string }): Promise<ApiPublicArtistPage<ApiPublicArtistProfile>>;
     getPublicRoles(): Promise<ApiArtistRoleDto[]>;
     getPublicArtistProfile(id: string | number): Promise<ApiPublicArtistProfile>;
 }

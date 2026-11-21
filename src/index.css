@@ -732,7 +732,7 @@ html[lang="ur"] footer {
     justify-content: space-between;
     color: var(--text);
     margin-right: 25px;
-    font-size: calc((12px) * var(--interface-scale, 1))
+    font-size: calc((14px) * var(--interface-scale, 1))
 }
 
 .dark-section {
@@ -1714,6 +1714,12 @@ select:focus-visible {
     margin-top: 10px
 }
 
+@media (min-width: 1100px) {
+    .library-directory-grid {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+}
+
 .library-directory-grid button {
     display: flex;
     flex-direction: column;
@@ -1752,6 +1758,90 @@ select:focus-visible {
     opacity: .8;
     letter-spacing: .04em;
     text-transform: uppercase
+}
+
+.lyrics-reciter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+@media (min-width: 640px) {
+    .lyrics-reciter-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1024px) {
+    .lyrics-reciter-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+.lyrics-reciter-grid .lyrics-reciter-card {
+    min-width: 0;
+    min-height: 0;
+    align-items: center;
+    gap: 0;
+    padding: 12px;
+    overflow: hidden;
+    border: 1px solid #3a3d40;
+    border-radius: 14px;
+    background: #25282a;
+    color: #f2f0eb;
+    text-align: center;
+}
+
+.lyrics-reciter-grid .lyrics-reciter-card:hover,
+.lyrics-reciter-grid .lyrics-reciter-card:focus-visible {
+    border-color: #555b5e;
+    background: #2b2f31;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, .2);
+}
+
+.lyrics-reciter-grid .lyrics-reciter-card .lyrics-artist-avatar--directory {
+    display: grid;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 6 / 3;
+    flex: none;
+    margin: 0 0 12px;
+    border: 0;
+    border-radius: 9px;
+    background: linear-gradient(145deg, #455d62, #28383d);
+    color: #e7d09a;
+}
+
+.lyrics-reciter-grid .lyrics-reciter-card .lyrics-artist-avatar--directory img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.lyrics-reciter-grid .lyrics-reciter-card .lyrics-artist-avatar--directory svg {
+    width: 52px;
+    height: 52px;
+    stroke-width: 1.25;
+}
+
+.lyrics-reciter-grid .lyrics-reciter-card .lyrics-reciter-card-name {
+    display: -webkit-box;
+
+    overflow: hidden;
+    color: inherit;
+    font-size: clamp(14px, 1.1vw, 17px);
+    font-weight: 650;
+    line-height: 1.25;
+    text-align: center;
+    overflow-wrap: anywhere;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+.lyrics-reciter-grid .lyrics-reciter-card .lyrics-reciter-card-count {
+    margin-top: 7px;
+    color: #aeb5b8;
+    font-size: 12px;
+    letter-spacing: .04em;
 }
 
 .lyrics-list {
