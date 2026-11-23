@@ -1,0 +1,11 @@
+{
+  "routes": [
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/((?!api(?:/|$)|assets/|src/|videos/|.*\\.[^/]+$).*)",
+      "dest": "/index.html"
+    }
+  ]
+}
