@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+
+Disallow: /admin
+Disallow: /admin/
+Disallow: /admin-edit
+Disallow: /login
+Disallow: /register
+Disallow: /api/
+Disallow: /book-reader
+
+Sitemap: https://www.zikreilahi.com/sitemap.xml
