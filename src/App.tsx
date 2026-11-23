@@ -14,6 +14,7 @@ import { Home } from "./features/home/pages/Home";
 import { ServicesPage } from "./features/services-page/pages/ServicesPage";
 import { AboutPage } from "./features/about/pages/AboutPage";
 import { ContactPage } from "./features/contact/pages/ContactPage";
+import { CopyrightPolicyPage, PrivacyPolicyPage, TermsConditionsPage } from "./features/information/pages/LegalPages";
 import { AuthPage } from "./features/auth/pages/AuthPage";
 import { AudioPage, AudioDetail } from "./features/audio/pages/AudioPages";
 import { AudioArtistLinks } from "./features/audio/components/AudioArtistLinks";
@@ -725,8 +726,13 @@ export default function App() {
         <RouterRoute path="services" element={<ServicesPage go={go} />} />
         <RouterRoute path="ebooks" element={<Ebooks go={go} onDownloadBook={handleDownloadBook} />} />
         <RouterRoute path="book-detail" element={<BookDetail go={go} onDownloadBook={handleDownloadBook} />} />
-        <RouterRoute path="about" element={<AboutPage go={go} />} />
-        <RouterRoute path="contact" element={<ContactPage go={go} />} />
+        <RouterRoute path="about-us" element={<AboutPage go={go} />} />
+        <RouterRoute path="contact-us" element={<ContactPage />} />
+        <RouterRoute path="privacy-policy" element={<PrivacyPolicyPage />} />
+        <RouterRoute path="terms-and-conditions" element={<TermsConditionsPage />} />
+        <RouterRoute path="copyright-policy" element={<CopyrightPolicyPage />} />
+        <RouterRoute path="about" element={<Navigate to="/about-us" replace />} />
+        <RouterRoute path="contact" element={<Navigate to="/contact-us" replace />} />
         <RouterRoute path="*" element={<NotFound go={go} />} />
       </RouterRoute>
       <RouterRoute element={<BareLayout routePath={routePath} />}>

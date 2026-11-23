@@ -6,7 +6,8 @@ import { LocalizedText, useInterfaceText } from "../app/providers/interfaceLangu
 export type IconName =
     | "search" | "menu" | "x" | "arrow" | "book" | "play" | "headphones"
     | "pen" | "layers" | "download" | "copy" | "share" | "user" | "mail"
-    | "grid" | "volume" | "chevron" | "heart" | "eye" | "check";
+    | "grid" | "volume" | "chevron" | "heart" | "eye" | "check"
+    | "pin" | "phone" | "whatsapp" | "facebook" | "instagram" | "youtube";
 
 export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
     const paths: Record<IconName, ReactNode> = {
@@ -30,6 +31,12 @@ export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
         heart: <path d="M20.8 5.7a5.4 5.4 0 0 0-7.6 0L12 6.9l-1.2-1.2a5.4 5.4 0 1 0-7.6 7.6L12 22l8.8-8.7a5.4 5.4 0 0 0 0-7.6z" />,
         eye: <><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></>,
         check: <path d="m5 12 4 4L19 6" />,
+        pin: <><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0z" /><circle cx="12" cy="10" r="2.5" /></>,
+        phone: <path d="M8.4 3H5.8A2.8 2.8 0 0 0 3 5.8C3 14.2 9.8 21 18.2 21a2.8 2.8 0 0 0 2.8-2.8v-2.6l-5-1.2-1.2 2.1a13 13 0 0 1-7.5-7.5l2.1-1.2z" />,
+        whatsapp: <><path d="M20.5 11.7a8.5 8.5 0 0 1-12.6 7.4L3 20.5l1.4-4.7A8.5 8.5 0 1 1 20.5 11.7z" /><path d="M8.2 7.8c.3-.6.6-.6.9-.6h.7c.2 0 .4.1.5.4l1.1 2.5c.1.3 0 .5-.2.7l-.8 1c.8 1.5 1.9 2.6 3.4 3.4l1-1c.2-.2.5-.3.8-.2l2.3 1.1c.3.1.4.3.4.6 0 1.8-1.2 3.1-2.9 3.1A8.4 8.4 0 0 1 7 10.5c0-.9.4-1.9 1.2-2.7z" /></>,
+        facebook: <path d="M14 8h3V4h-3c-3.1 0-5 2-5 5v3H6v4h3v5h4v-5h3l1-4h-4V9c0-.7.3-1 1-1z" />,
+        instagram: <><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r=".8" fill="currentColor" stroke="none" /></>,
+        youtube: <><rect x="2" y="5" width="20" height="14" rx="4" /><path d="m10 9 5 3-5 3z" /></>,
     };
     return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
 }

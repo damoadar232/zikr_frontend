@@ -5,7 +5,7 @@ import { Icon, InterfaceControls, Logo } from "../ui";
 
 export function Header({ route, go, language, setLanguage, fontScale, setFontScale }: { route: string; go: (route: string) => void; language: string; setLanguage: (value: string) => void; fontScale: number; setFontScale: (value: number) => void }) {
     const [open, setOpen] = useState(false);
-    const nav = [["Lyrics", "lyrics"], ["Quran", "quran"], ["Audio", "audio"], ["Services", "services"], ["E-Books", "ebooks"], ["About Us", "about"], ["Contact Us", "contact"]];
+    const nav = [["Lyrics", "lyrics"], ["Quran", "quran"], ["Audio", "audio"], ["Services", "services"], ["E-Books", "ebooks"], ["About Us", "about-us"], ["Contact Us", "contact-us"]];
     const t = (key: string) => translateInterface(language, key);
     return <>
         <header className="header">

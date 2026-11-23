@@ -1,17 +1,38 @@
-import { useState } from "react";
-import { interfaceAttributeText, LocalizedText, useInterfaceText } from "../../../app/providers/interfaceLanguage";
-import { Btn, Icon } from "../../../components/ui";
+import { usePageMetadata } from "../../../app/hooks/usePageMetadata";
+import { LocalizedText } from "../../../app/providers/interfaceLanguage";
 import { PageHero } from "../../../components/common/PagePrimitives";
+import { ContactDetails } from "../../information/pages/LegalPages";
 
-function ContactFormField({ label, name, type = "text", placeholder }: { label: string; name: string; type?: string; placeholder?: string }) {
-    const t = useInterfaceText();
-    return <label className="field"><span>{t(label)}</span><input name={name} type={type} placeholder={t(placeholder || `Enter your ${label.toLowerCase()}`)} /></label>;
-}
+const enquiryTopics = [
+    ["General enquiries", "Questions about the website and its available resources."],
+    ["Content corrections", "Updates to attribution, text, titles, or other published details."],
+    ["Copyright and ownership", "Concerns about rights, permission, or a specific item."],
+    ["Technical support", "Problems accessing a page, audio item, or ebook feature."],
+    ["Collaboration", "Ideas and partnership enquiries related to devotional resources."],
+];
 
-export function ContactPage({ go }: { go: (route: string) => void }) {
-    const [sent, setSent] = useState(false);
-    const [errors, setErrors] = useState(false);
+export function ContactPage() {
+    usePageMetadata(
+        "Contact Us | ZIKR-E-ILAHI",
+        "Find the right topic for a general enquiry, content correction, copyright concern, technical issue, or collaboration request.",
+    );
 
-    return <main><PageHero eyebrow="GET IN TOUCH" title={interfaceAttributeText("We'd love to hear from you.")} text="Questions, requests, and creative enquiries are all welcome." />
-        <section className="section container contact-grid"><div><h2><LocalizedText text={"Start a conversation"} /></h2><p><LocalizedText text={"Use the form and the team can respond through the eventual contact workflow. Verified email and social links will be added before launch."} /></p><div className="contact-note"><Icon name="mail" /><span><small><LocalizedText text={"EMAIL"} /></small><LocalizedText text={"Contact details coming soon"} /></span></div></div><form onSubmit={(event) => { event.preventDefault(); const form = new FormData(event.currentTarget); if (!form.get("name") || !form.get("email") || !form.get("message")) { setErrors(true); return; } setSent(true); setErrors(false); }}>{sent ? <div className="success"><Icon name="check" size={28} /><h3><LocalizedText text={"Message received"} /></h3><p><LocalizedText text={"This prototype demonstrates the success state. Backend delivery will be connected later."} /></p><Btn variant="outline" onClick={() => setSent(false)}><LocalizedText text={"Send another"} /></Btn></div> : <><div className="two-fields"><ContactFormField label="Name" name="name" /><ContactFormField label="Email" name="email" type="email" /></div><ContactFormField label="Subject" name="subject" /><label className="field"><span><LocalizedText text={"Message"} /></span><textarea name="message" placeholder={interfaceAttributeText("How can we help?")} rows={6} /></label>{errors && <p className="error"><LocalizedText text={"Please complete your name, email, and message."} /></p>}<Btn type="submit" icon="arrow"><LocalizedText text={"Send Message"} /></Btn></>}</form></section></main>;
+    return <main className="contact-page">
+        <PageHero eyebrow="GET IN TOUCH" title="Contact ZIKR-E-ILAHI" text="For questions, corrections, rights concerns, technical support, or collaboration enquiries, choose the topic that best describes your message." />
+        <section className="section container contact-topics">
+            <div className="contact-topics-intro">
+                <span className="eyebrow"><LocalizedText text={"HOW WE CAN HELP"} /></span>
+                <h2><LocalizedText text={"What would you like to discuss?"} /></h2>
+                <p><LocalizedText text={"Choose a topic to help direct your enquiry to the right place."} /></p>
+            </div>
+            <div className="contact-topics-grid">
+                {enquiryTopics.map(([title, description], index) => <article key={title}>
+                    <span className="contact-topic-number">0{index + 1}</span>
+                    <h3><LocalizedText text={title} /></h3>
+                    <p><LocalizedText text={description} /></p>
+                </article>)}
+            </div>
+        </section>
+        <ContactDetails />
+    </main>;
 }
