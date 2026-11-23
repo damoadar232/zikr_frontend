@@ -4,6 +4,286 @@
       "handle": "filesystem"
     },
     {
+      "src": "^/nematen-bant-ta-jis-samt-wo-zeeshan-gaya/$",
+      "status": 301,
+      "headers": {
+        "Location": "https://www.zikreilahi.com/lyric-detail?id=nematen-bant-ta-jis-samt-wo-zeeshan-gaya"
+      }
+    },
+    {
+      "src": "^/hussain-tum-ko-zamana-salam-kehta-hai/$",
+      "status": 301,
+      "headers": {
+        "Location": "https://www.zikreilahi.com/lyric-detail?id=hussain-tum-ko-zamana-salam-kehta-hai"
+      }
+    },
+    {
+      "src": "^/jab-karbala-hussain-ka-lashkar-nikal-gaya/$",
+      "status": 301,
+      "headers": {
+        "Location": "https://www.zikreilahi.com/lyric-detail?id=jab-karbala-hussain-ka-lashkar-nikal-gaya"
+      }
+    },
+    {
+      "src": "^/gunahon-ki-aadat-chura-mere-maula/$",
+      "status": 301,
+      "headers": {
+        "Location": "https://www.zikreilahi.com/lyric-detail?id=gunahon-ki-aadat-chura-mere-maula"
+      }
+    },
+    {
+      "src": "^/un-ke-karam-se-kaam-sara-ho-gaya/$",
+      "status": 301,
+      "headers": {
+        "Location": "https://www.zikreilahi.com/lyric-detail?id=un-ke-karam-se-kaam-sara-ho-gaya"
+      }
+    },
+    {
+      "src": "^/ho-karam-sarkar-ab-to-ho-gaye-gham-beshumar/$",
+      "status": 301,
+      "headers": {
+        "Location": "https://www.zikreilahi.com/lyric-detail?id=ho-karam-sarkar-ab-to-ho-gaye-gham-beshumar"
+      }
+    },
+    {
+      "src": "^/dare-fani-ko-tujhe-chhod-ke-jana-hoga/$",
+      "status": 301,
+      "headers": {
+        "Location": "https://www.zikreilahi.com/lyric-detail?id=dare-fani-ko-tujhe-chhod-ke-jana-hoga"
+      }
+    },
+    {
+      "src": "^/milta-hai-kya-namaz-mein-sajde-mein-ja-ke-dekh/$",
+      "status": 301,
+      "headers": {
+        "Location": "https://www.zikreilahi.com/lyric-detail?id=milta-hai-kya-namaz-mein-sajde-mein-ja-ke-dekh"
+      }
+    },
+    {
+      "src": "^/is-karam-ka-karoon-shukr-kaise-ada-jo-karam-mujh-pe-mere-nabi-kar-diya/$",
+      "status": 301,
+      "headers": {
+        "Location": "https://www.zikreilahi.com/lyric-detail?id=is-karam-ka-karoon-shukr-kaise-ada-jo-karam-mujh-pe-mere-nabi-kar-diya"
+      }
+    },
+    {
+      "src": "^/main-aasi-hoon-magar-tu-hai-bada-gaffar-ya-allah/$",
+      "status": 301,
+      "headers": {
+        "Location": "https://www.zikreilahi.com/lyric-detail?id=main-aasi-hoon-magar-tu-hai-bada-gaffar-ya-allah"
+      }
+    },
+    {
+      "src": "^/phool-bhi-muskurane-laga-hai-pattiyan-muskurane-lagi-hain/$",
+      "status": 301,
+      "headers": {
+        "Location": "https://www.zikreilahi.com/lyric-detail?id=phool-bhi-muskurane-laga-hai-pattiyan-muskurane-lagi-hain"
+      }
+    },
+    {
+      "src": "^/mera-har-gham-mitane-ko-mera-allah-kafi-hai/$",
+      "status": 301,
+      "headers": {
+        "Location": "https://www.zikreilahi.com/lyric-detail?id=mera-har-gham-mitane-ko-mera-allah-kafi-hai"
+      }
+    },
+    {
+      "src": "^/tu-kuja-man-kuja/$",
+      "status": 301,
+      "headers": {
+        "Location": "https://www.zikreilahi.com/lyric-detail?id=tu-kuja-man-kuja"
+      }
+    },
+    {
+      "src": "^/noori-mehfil-pe-chadar-tani-noor-ki-noor-phaila-hua-aaj-ki-raat-hai/$",
+      "status": 301,
+      "headers": {
+        "Location": "https://www.zikreilahi.com/lyric-detail?id=noori-mehfil-pe-chadar-tani-noor-ki-noor-phaila-hua-aaj-ki-raat-hai"
+      }
+    },
+    {
+      "src": "^/dil-me-ulfat-hasan-hussain-ki-hai/$",
+      "status": 301,
+      "headers": {
+        "Location": "https://www.zikreilahi.com/lyric-detail?id=dil-me-ulfat-hasan-hussain-ki-hai"
+      }
+    },
+    {
+      "src": "^/kash-phir-mujhe-hajj-ka-izn-mil-gaya-hota/$",
+      "status": 301,
+      "headers": {
+        "Location": "https://www.zikreilahi.com/lyric-detail?id=kash-phir-mujhe-hajj-ka-izn-mil-gaya-hota"
+      }
+    },
+    {
+      "src": "^/tayyaba-tahira-sayyada-maa-ayesha/$",
+      "status": 301,
+      "headers": {
+        "Location": "https://www.zikreilahi.com/lyric-detail?id=tayyaba-tahira-sayyada-maa-ayesha"
+      }
+    },
+    {
+      "src": "^/hamare-dil-se-zamane-ke-gham-mita-ya-rab/$",
+      "status": 301,
+      "headers": {
+        "Location": "https://www.zikreilahi.com/lyric-detail?id=hamare-dil-se-zamane-ke-gham-mita-ya-rab"
+      }
+    },
+    {
+      "src": "^/sarwar-kahoon-ke-malik-o-maula-kahoon-tujhe/$",
+      "status": 301,
+      "headers": {
+        "Location": "https://www.zikreilahi.com/lyric-detail?id=sarwar-kahoon-ke-malik-o-maula-kahoon-tujhe"
+      }
+    },
+    {
+      "src": "^/pul-se-utaro-rah-guzar-ko-khabar-na-ho/$",
+      "status": 301,
+      "headers": {
+        "Location": "https://www.zikreilahi.com/lyric-detail?id=pul-se-utaro-rah-guzar-ko-khabar-na-ho"
+      }
+    },
+    {
+      "src": "^/dil-mein-kisi-ko-aur-basaya-na-jayega/$",
+      "status": 301,
+      "headers": {
+        "Location": "https://www.zikreilahi.com/lyric-detail?id=dil-mein-kisi-ko-aur-basaya-na-jayega"
+      }
+    },
+    {
+      "src": "^/main-bhi-aaqa-wo-tere-dar-ke-nazare-dekhu/$",
+      "status": 301,
+      "headers": {
+        "Location": "https://www.zikreilahi.com/lyric-detail?id=main-bhi-aaqa-wo-tere-dar-ke-nazare-dekhu"
+      }
+    },
+    {
+      "src": "^/kabe-pe-padi-jab-pehli-nazar-kya-cheez-hai-duniya-bhool-gaya/$",
+      "status": 301,
+      "headers": {
+        "Location": "https://www.zikreilahi.com/lyric-detail?id=kabe-pe-padi-jab-pehli-nazar-kya-cheez-hai-duniya-bhool-gaya"
+      }
+    },
+    {
+      "src": "^/thi-jiske-muqaddar-mein-gadai-tere-dar-ki/$",
+      "status": 301,
+      "headers": {
+        "Location": "https://www.zikreilahi.com/lyric-detail?id=thi-jiske-muqaddar-mein-gadai-tere-dar-ki"
+      }
+    },
+    {
+      "src": "^/sunehri-jaliyan-gumbad-suhana-yaad-aata-hai/$",
+      "status": 301,
+      "headers": {
+        "Location": "https://www.zikreilahi.com/lyric-detail?id=sunehri-jaliyan-gumbad-suhana-yaad-aata-hai"
+      }
+    },
+    {
+      "src": "^/madine-mujhko-bula-le-bahut-udaas-hoon-main/$",
+      "status": 301,
+      "headers": {
+        "Location": "https://www.zikreilahi.com/lyric-detail?id=madine-mujhko-bula-le-bahut-udaas-hoon-main"
+      }
+    },
+    {
+      "src": "^/sara-nizam-e-hasti-bolo-kiska-hai/$",
+      "status": 301,
+      "headers": {
+        "Location": "https://www.zikreilahi.com/lyric-detail?id=sara-nizam-e-hasti-bolo-kiska-hai"
+      }
+    },
+    {
+      "src": "^/duniya-ke-aye-musafir-manzil-teri-qabar-hai/$",
+      "status": 301,
+      "headers": {
+        "Location": "https://www.zikreilahi.com/lyric-detail?id=duniya-ke-aye-musafir-manzil-teri-qabar-hai"
+      }
+    },
+    {
+      "src": "^/yaad-e-nabi-ka-gulshan-mehka-mehka-lagta-hai/$",
+      "status": 301,
+      "headers": {
+        "Location": "https://www.zikreilahi.com/lyric-detail?id=yaad-e-nabi-ka-gulshan-mehka-mehka-lagta-hai"
+      }
+    },
+    {
+      "src": "^/kaun-hai-jo-ye-iltija-na-kare-dil-ko-un-se-khuda-juda-na-kare-with-tazmeen/$",
+      "status": 301,
+      "headers": {
+        "Location": "https://www.zikreilahi.com/lyric-detail?id=kaun-hai-jo-ye-iltija-na-kare-dil-ko-un-se-khuda-juda-na-kare-with-tazmeen"
+      }
+    },
+    {
+      "src": "^/madina-madina-hamara-madina/$",
+      "status": 301,
+      "headers": {
+        "Location": "https://www.zikreilahi.com/lyric-detail?id=madina-madina-hamara-madina"
+      }
+    },
+    {
+      "src": "^/ik-main-hi-nahi-un-par-qurban-zamana-hai/$",
+      "status": 301,
+      "headers": {
+        "Location": "https://www.zikreilahi.com/lyric-detail?id=ik-main-hi-nahi-un-par-qurban-zamana-hai"
+      }
+    },
+    {
+      "src": "^/huzoor-aisa-koi-intezam-ho-jaye/$",
+      "status": 301,
+      "headers": {
+        "Location": "https://www.zikreilahi.com/lyric-detail?id=huzoor-aisa-koi-intezam-ho-jaye"
+      }
+    },
+    {
+      "src": "^/mojza-mere-nabi-ka-keh-diya-to-ho-gaya/$",
+      "status": 301,
+      "headers": {
+        "Location": "https://www.zikreilahi.com/lyric-detail?id=mojza-mere-nabi-ka-keh-diya-to-ho-gaya"
+      }
+    },
+    {
+      "src": "^/hum-sunni-bareilly-wale-hain/$",
+      "status": 301,
+      "headers": {
+        "Location": "https://www.zikreilahi.com/lyric-detail?id=hum-sunni-bareilly-wale-hain"
+      }
+    },
+    {
+      "src": "^/koi-gul-baqi-rahega-na-chaman-reh-jayega/$",
+      "status": 301,
+      "headers": {
+        "Location": "https://www.zikreilahi.com/lyric-detail?id=koi-gul-baqi-rahega-na-chaman-reh-jayega"
+      }
+    },
+    {
+      "src": "^/hamari-itni-khataon-par-bhi-nibha-rahe-hain-madine-wale/$",
+      "status": 301,
+      "headers": {
+        "Location": "https://www.zikreilahi.com/lyric-detail?id=hamari-itni-khataon-par-bhi-nibha-rahe-hain-madine-wale"
+      }
+    },
+    {
+      "src": "^/qismat-meri-chamkaiye-chamkaiye-aaqa/$",
+      "status": 301,
+      "headers": {
+        "Location": "https://www.zikreilahi.com/lyric-detail?id=qismat-meri-chamkaiye-chamkaiye-aaqa"
+      }
+    },
+    {
+      "src": "^/kaaba-yaad-aata-hai/$",
+      "status": 301,
+      "headers": {
+        "Location": "https://www.zikreilahi.com/lyric-detail?id=kaaba-yaad-aata-hai"
+      }
+    },
+    {
+      "src": "^/mere-maula-karam-ho-karam/$",
+      "status": 301,
+      "headers": {
+        "Location": "https://www.zikreilahi.com/lyric-detail?id=mere-maula-karam-ho-karam"
+      }
+    },
+    {
       "src": "/((?!api(?:/|$)|assets/|src/|videos/|.*\\.[^/]+$).*)",
       "dest": "/index.html"
     }
