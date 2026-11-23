@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { usePageMetadata } from "../../../app/hooks/usePageMetadata";
 import { interfaceAttributeText, LocalizedText, useInterfaceText } from "../../../app/providers/interfaceLanguage";
 import { getRouteQueryParam } from "../../../app/utils/getRouteQueryParam";
 import { Icon } from "../../../components/ui";
@@ -100,6 +101,10 @@ function QuranSearchAndBrowse({ search, setSearch, activeCategory, onSelectCateg
 
 
 export function QuranHome({ go }: { go: (r: Route) => void }) {
+  usePageMetadata(
+    "Read the Quran | ZIKR-E-ILAHI",
+    "Explore Quran reading resources and browse Surahs and Para divisions on ZIKR-E-ILAHI.",
+  );
   const [search, setSearch] = useState("");
   const { items: allSurahs } = useQuranSurahs();
   const filteredSurahs = filterQuranSurahs(allSurahs, search).slice(0, 6);
@@ -117,6 +122,10 @@ function SurahGrid({ go, items = surahs }: { go: (r: Route) => void; items?: str
 }
 
 export function SurahDirectory({ go }: { go: (r: Route) => void }) {
+  usePageMetadata(
+    "Surah Directory | ZIKR-E-ILAHI",
+    "Browse the 114 Surahs of the Quran in order, with available Makki and Madani information.",
+  );
   const [search, setSearch] = useState("");
   const [revelationFilter, setRevelationFilter] = useState<"Makki" | "Madani" | undefined>(undefined);
   const { items: surahItems, loading } = useQuranSurahs(revelationFilter);
@@ -142,7 +151,7 @@ export function SurahDirectory({ go }: { go: (r: Route) => void }) {
 
 export function SurahRead({ go, isLoggedIn, onRequireAuthentication }: { go: (r: Route) => void; isLoggedIn: boolean; onRequireAuthentication: (action: string, contentType: string, contentId: string) => boolean }) {
   const navigate = useNavigate();
-  const location = new URLSearchParams(window.location.hash.split("?")[1] || "");
+  const location = new URLSearchParams(window.location.search || window.location.hash.split("?")[1] || "");
   const requestedSurah = Number(location.get("surah")) || 1;
   const initialSurah = Math.min(surahData.length, Math.max(1, requestedSurah));
   const requestedJuz = Number(location.get("juz"));
@@ -170,7 +179,7 @@ export function SurahRead({ go, isLoggedIn, onRequireAuthentication }: { go: (r:
   const [translatorSelectionReady, setTranslatorSelectionReady] = useState(false);
   const [translatorPreferenceError, setTranslatorPreferenceError] = useState<string | null>(null);
   useEffect(() => {
-    const params = new URLSearchParams(window.location.hash.split("?")[1] || "");
+    const params = new URLSearchParams(window.location.search || window.location.hash.split("?")[1] || "");
     if (params.get("translation") === selectedTranslation) return;
     params.set("translation", selectedTranslation);
     navigate(`/surah-read?${params.toString()}`, { replace: true });
@@ -201,6 +210,11 @@ export function SurahRead({ go, isLoggedIn, onRequireAuthentication }: { go: (r:
   const pendingAudioSeek = useRef<number | null>(null);
   const lastPlaybackAyah = useRef<number | null>(null);
   const chapter = surahData[surahNumber - 1];
+  usePageMetadata(
+    `${chapter[1]} | Quran Surah ${surahNumber} | ZIKR-E-ILAHI`,
+    `Read ${chapter[1]}, Surah ${surahNumber} of the Quran, with ${chapter[2]} verses on ZIKR-E-ILAHI.`,
+    { canonicalPath: `${window.location.pathname}?surah=${surahNumber}` },
+  );
   const chapterNumber = surahNumber;
   const [arabicName, transliteratedName, ayahCount, revelation] = chapter;
   const selectedTranslatorIdSet = new Set(selectedTranslatorIds);
@@ -700,6 +714,10 @@ export function SurahRead({ go, isLoggedIn, onRequireAuthentication }: { go: (r:
 }
 
 export function ParaPage({ go }: { go: (r: Route) => void }) {
+  usePageMetadata(
+    "Para Directory | ZIKR-E-ILAHI",
+    "Browse the Quran through its 30 traditional Para, or Juz, divisions on ZIKR-E-ILAHI.",
+  );
   const [search, setSearch] = useState("");
   const { items, loading, error, retry, apiConfigured } = useQuranJuzList();
   const paraEntries = items.map((item) => ({
@@ -720,6 +738,13 @@ export function QuranTopics({ go }: { go: (r: Route) => void }) {
   const t = useInterfaceText();
   const [search, setSearch] = useState("");
   const selectedView = getRouteQueryParam("view") === "quotes" ? "Quranic Quotes" : "Topics";
+  usePageMetadata(
+    selectedView === "Quranic Quotes" ? "Quranic Quotes | ZIKR-E-ILAHI" : "Quran Topics | ZIKR-E-ILAHI",
+    selectedView === "Quranic Quotes"
+      ? "Browse the Quranic Quotes section and its current verified content status on ZIKR-E-ILAHI."
+      : "Explore the Quran topics index and its current published references on ZIKR-E-ILAHI.",
+    { canonicalPath: selectedView === "Quranic Quotes" ? `${window.location.pathname}?view=quotes` : window.location.pathname },
+  );
   const handleBrowseSelect = (item: (typeof quranBrowseItems)[number]) => {
     setSearch("");
     go(quranBrowseMap[item]);

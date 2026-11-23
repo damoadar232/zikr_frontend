@@ -3,6 +3,7 @@ import { Navigate, Outlet, Route as RouterRoute, Routes, useLocation, useNavigat
 import { InterfaceLanguageContext, interfaceAttributeText, LocalizedText, useInterfaceLanguage, useInterfaceText } from "./app/providers/interfaceLanguage";
 import { photos } from "./app/config/media";
 import { isAvailableDownloadUrl } from "./app/utils/downloadUrl";
+import { usePageMetadata } from "./app/hooks/usePageMetadata";
 import { Footer } from "./components/layout/Footer";
 import { Header } from "./components/layout/Header";
 import { Btn, Icon, SectionThemeControl, type IconName, Logo } from "./components/ui";
@@ -62,10 +63,26 @@ function PublicLayout({ route, routePath, go, language, setLanguage, fontScale, 
 }
 
 function BareLayout({ routePath }: { routePath: string }) {
+  const isAdminRoute = routePath.startsWith("admin");
+  const title = isAdminRoute ? "Content Administration | ZIKR-E-ILAHI"
+    : routePath === "register" ? "Create an Account | ZIKR-E-ILAHI"
+      : routePath === "book-reader" ? "Private Ebook Reader | ZIKR-E-ILAHI"
+        : "Login | ZIKR-E-ILAHI";
+  const description = routePath === "book-reader"
+    ? "Private ebook reading page."
+    : isAdminRoute ? "Private content administration page."
+      : routePath === "register" ? "Create an account to access ZIKR-E-ILAHI account features."
+        : "Sign in to your ZIKR-E-ILAHI account.";
+  usePageMetadata(title, description, { robots: "noindex, nofollow" });
   return <>{routePath === "book-reader" && <div className="app-page-toolbar"><div className="container app-page-toolbar-inner"><BackButton routePath={routePath} /></div></div>}<Outlet /></>;
 }
 
 function NotFound({ go }: { go: (r: Route) => void }) {
+  usePageMetadata(
+    "Page Not Found | ZIKR-E-ILAHI",
+    "The requested page could not be found on ZIKR-E-ILAHI.",
+    { robots: "noindex, nofollow" },
+  );
   return <main className="reading-bg"><div className="container narrow"><div className="empty"><h1>Page not found</h1><p><LocalizedText text={"The page you requested could not be found."} /></p><button className="btn btn-primary" onClick={() => go("home")}><LocalizedText text={"Back to Home"} /></button></div></div></main>;
 }
 
@@ -326,6 +343,17 @@ function LyricDetail({ go }: { go: (r: Route) => void }) {
   const [retry, setRetry] = useState(0);
   const [selectedLanguage, setSelectedLanguage] = useState("");
   const [artistSelection, setArtistSelection] = useState<LyricsArtistSelection | null>(null);
+  const lyricMetadataDescription = lyric
+    ? `Read ${lyric.title}${getLyricWriterName(lyric) !== "Unknown writer" ? `, written by ${getLyricWriterName(lyric)}` : ""} on ZIKR-E-ILAHI.`
+    : "Details for this lyric are not currently available.";
+  usePageMetadata(
+    lyric ? `${lyric.title} | ZIKR-E-ILAHI` : "Lyric Details | ZIKR-E-ILAHI",
+    lyricMetadataDescription.slice(0, 160),
+    {
+      canonicalPath: lyricId ? `${window.location.pathname}?id=${encodeURIComponent(lyricId)}` : window.location.pathname,
+      robots: lyric ? undefined : "noindex, nofollow",
+    },
+  );
 
   useEffect(() => {
     let active = true;

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { usePageMetadata } from "../../../app/hooks/usePageMetadata";
 import { interfaceAttributeText, LocalizedText, useInterfaceText } from "../../../app/providers/interfaceLanguage";
 import { photos } from "../../../app/config/media";
 import { Btn, Icon, type IconName } from "../../../components/ui";
@@ -15,6 +16,10 @@ const portfolioDesignTitles = ["Echoes of Devotion", "Journey to Madina", "The R
 const portfolioDesignCategories = ["AUDIO PRODUCTION", "VIDEO EDIT", "COVER DESIGN"];
 
 export function ServicesPage({ go }: { go: (route: string) => void }) {
+    usePageMetadata(
+        "Creative Services | ZIKR-E-ILAHI",
+        "Explore audio production, video editing, design, and other creative services presented by ZIKR-E-ILAHI.",
+    );
     const t = useInterfaceText();
     const services = [
         ["headphones", "Naat Mixing & Mastering", "https://images.unsplash.com/photo-1761939997990-7e1635db43c5?auto=format&fit=crop&w=800&q=78"],

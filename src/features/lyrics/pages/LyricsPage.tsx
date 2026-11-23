@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { usePageMetadata } from "../../../app/hooks/usePageMetadata";
 import { lyricCategories, normalizeLyricLanguageCode } from "../../../lyricsData";
 import { interfaceAttributeText, LocalizedText, useInterfaceText } from "../../../app/providers/interfaceLanguage";
 import { getRouteQueryParam } from "../../../app/utils/getRouteQueryParam";
@@ -291,6 +292,18 @@ export function LyricsPage({ go, route }: { go: (route: string) => void; route: 
     const config = optionConfig[activeRoute];
     const selectedId = config ? getRouteQueryParam(config.parameter) : "";
     const selected = config?.entries.find(entry => entry.id === selectedId);
+    const metadataTitle = selected
+        ? `${selected.name} Lyrics | ZIKR-E-ILAHI`
+        : activeRoute === "lyrics" ? "Islamic Lyrics | ZIKR-E-ILAHI"
+            : `${config?.title || "Lyrics"} | ZIKR-E-ILAHI`;
+    const metadataDescription = selected
+        ? `Browse devotional lyrics associated with ${selected.name} on ZIKR-E-ILAHI.`
+        : activeRoute === "lyrics" ? "Browse published Islamic devotional lyrics, including naats, hamd, and other written works."
+            : `Browse ${config?.title.toLowerCase() || "devotional lyrics"} and related published works on ZIKR-E-ILAHI.`;
+    const canonicalPath = selected
+        ? `${window.location.pathname}?${config?.parameter}=${encodeURIComponent(selectedId)}`
+        : window.location.pathname;
+    usePageMetadata(metadataTitle, metadataDescription, { canonicalPath });
     const overview = activeRoute !== "lyrics" && (!config || !selected);
     const reciterPageVisibleEntries = activeRoute === "lyrics-artists"
         ? reciterDirectoryEntries.filter((entry) =>

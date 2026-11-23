@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { usePageMetadata } from "../../../app/hooks/usePageMetadata";
 import type { AudioArtistCredit, AudioRecord } from "../../../audioData.js";
 import { LocalizedText, interfaceAttributeText } from "../../../app/providers/interfaceLanguage";
 import { getRouteQueryParam } from "../../../app/utils/getRouteQueryParam";
@@ -35,6 +36,10 @@ function formatPublishedDate(value: string) {
 }
 
 export function AudioPage({ go, onPlayAudio, onPauseAudio, onDownloadAudio, onTracksLoaded, activeAudioId, isAudioPlaying }: AudioActions) {
+    usePageMetadata(
+        "Devotional Audio | ZIKR-E-ILAHI",
+        "Browse available devotional audio, including recitations, naats, hamd, and other published recordings.",
+    );
     const [search, setSearch] = useState("");
     const [categoryKey, setCategoryKey] = useState("");
     const [categories, setCategories] = useState<AudioCategoryOption[]>([]);
@@ -130,6 +135,17 @@ export function AudioDetail({ go, onPlayAudio, onPauseAudio, onDownloadAudio, on
     const [notFound, setNotFound] = useState(false);
     const [retry, setRetry] = useState(0);
     const [artistSelection, setArtistSelection] = useState<AudioArtistSelection | null>(null);
+    const audioMetadataDescription = track
+        ? track.description?.trim() || `Listen to ${track.title}${track.artist ? ` by ${track.artist}` : ""} on ZIKR-E-ILAHI.`
+        : "Details for this audio item are not currently available.";
+    usePageMetadata(
+        track ? `${track.title} | ZIKR-E-ILAHI` : "Audio Details | ZIKR-E-ILAHI",
+        audioMetadataDescription.slice(0, 160),
+        {
+            canonicalPath: detailId ? `${window.location.pathname}?id=${encodeURIComponent(detailId)}` : window.location.pathname,
+            robots: track ? undefined : "noindex, nofollow",
+        },
+    );
     const openArtistProfile = useCallback((credit: AudioArtistCredit) => {
         setArtistSelection({
             artistId: credit.id,

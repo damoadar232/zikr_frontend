@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { usePageMetadata } from "../../../app/hooks/usePageMetadata";
 import type { AudioArtistCredit, AudioRecord } from "../../../audioData.js";
 import { photos, heroVideo } from "../../../app/config/media";
 import { useInterfaceLanguage, useInterfaceText, LocalizedText, interfaceAttributeText } from "../../../app/providers/interfaceLanguage";
@@ -16,6 +17,10 @@ import { listPublicEbooks } from "../../ebooks/services/ebooksApiService";
 import type { EbookLibraryItem } from "../../ebooks/services/ebooksApiService";
 
 export function Home({ go, onPlayAudio, onPauseAudio, onDownloadAudio, onDownloadBook, onTracksLoaded, activeAudioId, isAudioPlaying }: { go: (route: string) => void; onPlayAudio: (track: AudioRecord) => void; onPauseAudio: () => void; onDownloadAudio: (track: AudioRecord) => void; onDownloadBook: (book: EbookLibraryItem) => void; onTracksLoaded: (tracks: AudioRecord[]) => void; activeAudioId: string | null; isAudioPlaying: boolean }) {
+    usePageMetadata(
+        "Islamic Devotional Resources | ZIKR-E-ILAHI",
+        "Explore Islamic devotional lyrics, recitations, ebooks, Quran reading resources, and related learning content on ZIKR-E-ILAHI.",
+    );
     const t = useInterfaceText();
     const language = useInterfaceLanguage();
     const [latestLyrics, setLatestLyrics] = useState<ApiPublicLyric[]>([]);

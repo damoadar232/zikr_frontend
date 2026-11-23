@@ -1,27 +1,44 @@
 import { useEffect } from "react";
 
-export function usePageMetadata(title: string, description: string) {
+const CANONICAL_ORIGIN = "https://www.zikreilahi.com";
+
+type PageMetadataOptions = {
+    canonicalPath?: string;
+    robots?: string;
+};
+
+function setMetaContent(name: string, content: string | undefined) {
+    const tags = document.head.querySelectorAll<HTMLMetaElement>(`meta[name="${name}"]`);
+    const tag = tags[0] || document.createElement("meta");
+    tags.forEach((duplicate) => {
+        if (duplicate !== tag) duplicate.remove();
+    });
+
+    if (!content) {
+        tag.remove();
+        return;
+    }
+
+    tag.name = name;
+    tag.content = content;
+    if (!tag.isConnected) document.head.append(tag);
+}
+
+export function usePageMetadata(title: string, description: string, options: PageMetadataOptions = {}) {
     useEffect(() => {
-        const previousTitle = document.title;
-        const existingDescription = document.querySelector<HTMLMetaElement>('meta[name="description"]');
-        const descriptionTag = existingDescription || document.createElement("meta");
-        const previousDescription = descriptionTag.content;
-
-        if (!existingDescription) {
-            descriptionTag.name = "description";
-            document.head.append(descriptionTag);
-        }
-
         document.title = title;
-        descriptionTag.content = description;
+        setMetaContent("description", description);
+        setMetaContent("robots", options.robots);
 
-        return () => {
-            document.title = previousTitle;
-            if (existingDescription) {
-                descriptionTag.content = previousDescription;
-            } else {
-                descriptionTag.remove();
-            }
-        };
-    }, [title, description]);
+        const canonicalTags = document.head.querySelectorAll<HTMLLinkElement>('link[rel="canonical"]');
+        const canonicalTag = canonicalTags[0] || document.createElement("link");
+        canonicalTags.forEach((duplicate) => {
+            if (duplicate !== canonicalTag) duplicate.remove();
+        });
+        const canonicalUrl = new URL(options.canonicalPath || window.location.pathname, CANONICAL_ORIGIN);
+        canonicalUrl.hash = "";
+        canonicalTag.rel = "canonical";
+        canonicalTag.href = canonicalUrl.toString();
+        if (!canonicalTag.isConnected) document.head.append(canonicalTag);
+    }, [description, options.canonicalPath, options.robots, title]);
 }

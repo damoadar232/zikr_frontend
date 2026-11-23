@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { usePageMetadata } from "../../../app/hooks/usePageMetadata";
 import { Document, Page, pdfjs } from "react-pdf";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
@@ -29,6 +30,10 @@ function getErrorMessage(error: unknown, fallback: string) {
 }
 
 export function Ebooks({ go, onDownloadBook }: { go: (route: string) => void; onDownloadBook: (book: EbookLibraryItem) => void }) {
+    usePageMetadata(
+        "Islamic Ebooks Library | ZIKR-E-ILAHI",
+        "Browse available Islamic ebooks and reading materials in the ZIKR-E-ILAHI public library.",
+    );
     const [search, setSearch] = useState("");
     const [tab, setTab] = useState("All Books");
     const [books, setBooks] = useState<EbookLibraryItem[]>([]);
@@ -113,6 +118,16 @@ export function BookDetail({ go, onDownloadBook }: { go: (route: string) => void
     const [notFound, setNotFound] = useState(false);
     const [retry, setRetry] = useState(0);
     const [authorSelection, setAuthorSelection] = useState<EbookAuthorSelection | null>(null);
+    usePageMetadata(
+        book ? `${book.title} | Islamic Ebooks | ZIKR-E-ILAHI` : "Ebook Details | ZIKR-E-ILAHI",
+        book
+            ? (book.description?.trim() || `Details about ${book.title}${book.author ? ` by ${book.author}` : ""} in the ZIKR-E-ILAHI ebook library.`).slice(0, 160)
+            : "Details for this ebook are not currently available.",
+        {
+            canonicalPath: detailId ? `${window.location.pathname}?id=${encodeURIComponent(detailId)}` : window.location.pathname,
+            robots: book ? undefined : "noindex, nofollow",
+        },
+    );
     const openAuthorProfile = useCallback((author: EbookAuthor) => {
         if (!Number.isSafeInteger(author.id) || author.id < 1) return;
         setAuthorSelection({
